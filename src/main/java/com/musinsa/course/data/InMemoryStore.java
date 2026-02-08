@@ -73,6 +73,25 @@ public class InMemoryStore {
                 if (course.enrolled >= course.capacity) {
                     return EnrollmentResult.capacityExceeded(courseId);
                 }
+                int currentCredits = 0;
+                Schedule newSchedule = Schedule.parse(course.schedule);
+                for (EnrollmentKey existing : enrollments) {
+                    if (existing.studentId != studentId) {
+                        continue;
+                    }
+                    CourseState enrolledCourse = coursesById.get(existing.courseId);
+                    if (enrolledCourse == null) {
+                        continue;
+                    }
+                    currentCredits += enrolledCourse.credits;
+                    Schedule existingSchedule = Schedule.parse(enrolledCourse.schedule);
+                    if (newSchedule.overlaps(existingSchedule)) {
+                        return EnrollmentResult.timeConflict(studentId, courseId);
+                    }
+                }
+                if (currentCredits + course.credits > 18) {
+                    return EnrollmentResult.creditLimitExceeded(studentId, courseId);
+                }
                 course.enrolled++;
                 long enrollmentId = enrollmentSeq.incrementAndGet();
                 enrollments.add(key);
@@ -265,5 +284,39 @@ public class InMemoryStore {
         public static EnrollmentResult duplicateEnrollment(int studentId, int courseId) {
             return new EnrollmentResult(false, false, 0, studentId, courseId, 603, 409, "이미 신청한 강좌입니다");
         }
+
+        public static EnrollmentResult creditLimitExceeded(int studentId, int courseId) {
+            return new EnrollmentResult(false, false, 0, studentId, courseId, 601, 409, "최대 학점을 초과합니다");
+        }
+
+        public static EnrollmentResult timeConflict(int studentId, int courseId) {
+            return new EnrollmentResult(false, false, 0, studentId, courseId, 602, 409, "시간표가 충돌합니다");
+        }
     }
+
+    private record Schedule(String day, int start, int end) {
+
+        private static Schedule parse(String schedule) {
+                String[] parts = schedule.split(" ");
+                String day = parts[0];
+                String[] times = parts[1].split("-");
+                int start = toMinutes(times[0]);
+                int end = toMinutes(times[1]);
+                return new Schedule(day, start, end);
+            }
+
+            private static int toMinutes(String hhmm) {
+                int colon = hhmm.indexOf(':');
+                int hour = Integer.parseInt(hhmm.substring(0, colon));
+                int minute = Integer.parseInt(hhmm.substring(colon + 1));
+                return hour * 60 + minute;
+            }
+
+            private boolean overlaps(Schedule other) {
+                if (!this.day.equals(other.day)) {
+                    return false;
+                }
+                return this.start < other.end && other.start < this.end;
+            }
+        }
 }
