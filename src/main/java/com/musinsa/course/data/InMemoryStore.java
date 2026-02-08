@@ -74,7 +74,10 @@ public class InMemoryStore {
                     return EnrollmentResult.capacityExceeded(courseId);
                 }
                 int currentCredits = 0;
-                Schedule newSchedule = Schedule.parse(course.schedule);
+                Schedule newSchedule = Schedule.tryParse(course.schedule);
+                if (newSchedule == null) {
+                    return EnrollmentResult.invalidRequest();
+                }
                 for (EnrollmentKey existing : enrollments) {
                     if (existing.studentId != studentId) {
                         continue;
@@ -84,12 +87,15 @@ public class InMemoryStore {
                         continue;
                     }
                     currentCredits += enrolledCourse.credits;
-                    Schedule existingSchedule = Schedule.parse(enrolledCourse.schedule);
+                    Schedule existingSchedule = Schedule.tryParse(enrolledCourse.schedule);
+                    if (existingSchedule == null) {
+                        return EnrollmentResult.invalidRequest();
+                    }
                     if (newSchedule.overlaps(existingSchedule)) {
                         return EnrollmentResult.timeConflict(studentId, courseId);
                     }
                 }
-                if (currentCredits + course.credits > 18) {
+                if (currentCredits + course.credits > student.maxCredits()) {
                     return EnrollmentResult.creditLimitExceeded(studentId, courseId);
                 }
                 course.enrolled++;
@@ -296,21 +302,43 @@ public class InMemoryStore {
 
     private record Schedule(String day, int start, int end) {
 
-        private static Schedule parse(String schedule) {
-                String[] parts = schedule.split(" ");
-                String day = parts[0];
-                String[] times = parts[1].split("-");
-                int start = toMinutes(times[0]);
-                int end = toMinutes(times[1]);
-                return new Schedule(day, start, end);
+        private static Schedule tryParse(String schedule) {
+            if (schedule == null) {
+                return null;
             }
+            String[] parts = schedule.trim().split("\\s+");
+            if (parts.length != 2) {
+                return null;
+            }
+            String day = parts[0];
+            String[] times = parts[1].split("-");
+            if (times.length != 2) {
+                return null;
+            }
+            Integer start = tryToMinutes(times[0]);
+            Integer end = tryToMinutes(times[1]);
+            if (start == null || end == null || start >= end) {
+                return null;
+            }
+            return new Schedule(day, start, end);
+        }
 
-            private static int toMinutes(String hhmm) {
-                int colon = hhmm.indexOf(':');
+        private static Integer tryToMinutes(String hhmm) {
+            int colon = hhmm.indexOf(':');
+            if (colon <= 0 || colon >= hhmm.length() - 1) {
+                return null;
+            }
+            try {
                 int hour = Integer.parseInt(hhmm.substring(0, colon));
                 int minute = Integer.parseInt(hhmm.substring(colon + 1));
+                if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                    return null;
+                }
                 return hour * 60 + minute;
+            } catch (NumberFormatException e) {
+                return null;
             }
+        }
 
             private boolean overlaps(Schedule other) {
                 if (!this.day.equals(other.day)) {
