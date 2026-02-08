@@ -275,6 +275,19 @@
   }
 }
 ```
+- 시간 충돌
+```json
+{
+  "error": {
+    "code": 602,
+    "message": "시간표가 충돌합니다",
+    "details": {
+      "studentId": 1001,
+      "courseId": 1
+    }
+  }
+}
+```
 - 중복 신청
 ```json
 {
