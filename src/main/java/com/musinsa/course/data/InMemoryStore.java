@@ -1,8 +1,6 @@
 package com.musinsa.course.data;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,8 +20,8 @@ public class InMemoryStore {
     private Map<Integer, CourseState> coursesById = Collections.emptyMap();
     private final Map<Integer, ReentrantLock> courseLocks = new ConcurrentHashMap<>();
     private final Map<Integer, ReentrantLock> studentLocks = new ConcurrentHashMap<>();
-    private final Set<EnrollmentKey> enrollments = new HashSet<>();
-    private final Map<EnrollmentKey, Long> enrollmentIds = new HashMap<>();
+    private final Set<EnrollmentKey> enrollments = ConcurrentHashMap.newKeySet();
+    private final Map<EnrollmentKey, Long> enrollmentIds = new ConcurrentHashMap<>();
     private final AtomicLong enrollmentSeq = new AtomicLong(900_000);
 
     public boolean isReady() {
@@ -143,6 +141,30 @@ public class InMemoryStore {
         } finally {
             courseLock.unlock();
         }
+    }
+
+    public TimetableResult timetable(int studentId) {
+        if (studentId <= 0) {
+            return TimetableResult.invalidRequest();
+        }
+        SeedData.Student student = studentsById.get(studentId);
+        if (student == null) {
+            return TimetableResult.studentNotFound(studentId);
+        }
+        List<SeedData.Course> items = new java.util.ArrayList<>();
+        int totalCredits = 0;
+        for (EnrollmentKey key : enrollments) {
+            if (key.studentId != studentId) {
+                continue;
+            }
+            CourseState course = coursesById.get(key.courseId);
+            if (course == null) {
+                continue;
+            }
+            items.add(course.toCourse());
+            totalCredits += course.credits;
+        }
+        return TimetableResult.success(items, totalCredits);
     }
 
     void setData(SeedData data) {
@@ -297,6 +319,46 @@ public class InMemoryStore {
 
         public static EnrollmentResult timeConflict(int studentId, int courseId) {
             return new EnrollmentResult(false, false, 0, studentId, courseId, 602, 409, "시간표가 충돌합니다");
+        }
+    }
+
+    public static final class TimetableResult {
+        public final boolean success;
+        public final List<SeedData.Course> items;
+        public final int totalCredits;
+        public final int errorCode;
+        public final int httpStatus;
+        public final String message;
+        public final int studentId;
+
+        private TimetableResult(
+            boolean success,
+            List<SeedData.Course> items,
+            int totalCredits,
+            int errorCode,
+            int httpStatus,
+            String message,
+            int studentId
+        ) {
+            this.success = success;
+            this.items = items;
+            this.totalCredits = totalCredits;
+            this.errorCode = errorCode;
+            this.httpStatus = httpStatus;
+            this.message = message;
+            this.studentId = studentId;
+        }
+
+        public static TimetableResult success(List<SeedData.Course> items, int totalCredits) {
+            return new TimetableResult(true, items, totalCredits, 0, 200, "ok", 0);
+        }
+
+        public static TimetableResult invalidRequest() {
+            return new TimetableResult(false, List.of(), 0, 500, 400, "잘못된 요청 파라미터", 0);
+        }
+
+        public static TimetableResult studentNotFound(int studentId) {
+            return new TimetableResult(false, List.of(), 0, 501, 404, "학생을 찾을 수 없습니다", studentId);
         }
     }
 
