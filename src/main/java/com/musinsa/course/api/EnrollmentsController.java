@@ -21,6 +21,9 @@ public class EnrollmentsController {
 
     @PostMapping("/enrollments")
     public ResponseEntity<?> enroll(@RequestBody EnrollmentRequest request) {
+        if (!store.isReady()) {
+            return ResponseEntity.status(503).body(serviceUnavailable());
+        }
         EnrollmentResult result = store.enroll(request.studentId(), request.courseId());
         if (result.success) {
             return ResponseEntity.status(201).body(new EnrollmentResponse(
@@ -35,6 +38,9 @@ public class EnrollmentsController {
 
     @DeleteMapping("/enrollments")
     public ResponseEntity<?> cancel(@RequestBody EnrollmentRequest request) {
+        if (!store.isReady()) {
+            return ResponseEntity.status(503).body(serviceUnavailable());
+        }
         EnrollmentResult result = store.cancel(request.studentId(), request.courseId());
         if (result.canceled) {
             return ResponseEntity.noContent().build();
@@ -48,6 +54,10 @@ public class EnrollmentsController {
             "courseId", result.courseId
         );
         return new ErrorResponse(new ErrorResponse.Error(result.errorCode, result.message, details));
+    }
+
+    private static ErrorResponse serviceUnavailable() {
+        return new ErrorResponse(new ErrorResponse.Error(700, "서비스 준비 중", Map.of()));
     }
 
     public record EnrollmentRequest(int studentId, int courseId) {
