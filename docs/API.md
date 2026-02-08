@@ -188,17 +188,14 @@
 }
 ```
 
-실패 응답 예시(존재하지 않는 학과 ID)
+실패 응답 예시(요청 파라미터 오류)
 - HTTP 400
 ```json
 {
   "error": {
     "code": 500,
-    "message": "존재하지 않는 학과 ID",
-    "details": {
-      "field": "departmentId",
-      "value": 9999
-    }
+    "message": "잘못된 요청 파라미터",
+    "details": {}
   }
 }
 ```
@@ -255,19 +252,6 @@
   "error": {
     "code": 601,
     "message": "최대 학점을 초과합니다",
-    "details": {
-      "studentId": 1001,
-      "maxCredits": 18
-    }
-  }
-}
-```
-- 시간 충돌
-```json
-{
-  "error": {
-    "code": 602,
-    "message": "시간표가 충돌합니다",
     "details": {
       "studentId": 1001,
       "courseId": 1
@@ -403,7 +387,7 @@
   "studentId": 1001,
   "items": [
     {
-      "courseId": 1,
+      "id": 1,
       "name": "자료구조",
       "credits": 3,
       "schedule": "월 09:00-10:30",
