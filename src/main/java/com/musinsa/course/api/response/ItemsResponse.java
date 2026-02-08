@@ -1,4 +1,4 @@
-package com.musinsa.course.api;
+package com.musinsa.course.api.response;
 
 import java.util.List;
 
