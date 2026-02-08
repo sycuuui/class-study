@@ -71,7 +71,9 @@
 **학생 목록 조회**
 
 **GET /students**
-- 요청 파라미터: 없음
+- 요청 파라미터
+- `limit` (선택, 기본 50)
+- `offset` (선택, 기본 0)
 
 정상 응답 예시
 ```json
@@ -85,7 +87,12 @@
       "maxCredits": 18,
       "enrolledCredits": 12
     }
-  ]
+  ],
+  "page": {
+    "limit": 50,
+    "offset": 0,
+    "total": 10000
+  }
 }
 ```
 
@@ -105,7 +112,9 @@
 **교수 목록 조회**
 
 **GET /professors**
-- 요청 파라미터: 없음
+- 요청 파라미터
+- `limit` (선택, 기본 50)
+- `offset` (선택, 기본 0)
 
 정상 응답 예시
 ```json
@@ -117,7 +126,12 @@
       "departmentId": 10,
       "departmentName": "컴퓨터공학과"
     }
-  ]
+  ],
+  "page": {
+    "limit": 50,
+    "offset": 0,
+    "total": 100
+  }
 }
 ```
 
@@ -139,6 +153,8 @@
 **GET /courses**
 - 요청 파라미터
 - `departmentId` (선택): 학과별 조회
+- `limit` (선택, 기본 50)
+- `offset` (선택, 기본 0)
 
 정상 응답 예시
 ```json
@@ -156,7 +172,12 @@
       "professorId": 501,
       "professorName": "박지훈"
     }
-  ]
+  ],
+  "page": {
+    "limit": 50,
+    "offset": 0,
+    "total": 500
+  }
 }
 ```
 
