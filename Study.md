@@ -41,7 +41,7 @@ com.musinsa.course
 
 ## 1-1. 앱 시작점 — `Application.java`
 
-```java
+```
 @SpringBootApplication
 public class Application {
     public static void main(String[] args) {
@@ -72,7 +72,7 @@ data/ ← Store      : 비즈니스 로직·데이터·동시성. HTTP를 전혀
 
 ## 1-3. 의존성 주입 (DI)
 
-```java
+```
 private final InMemoryStore store;
 public StudentsController(InMemoryStore store) { this.store = store; }
 ```
@@ -84,7 +84,7 @@ public StudentsController(InMemoryStore store) { this.store = store; }
 
 ## 1-4. 요청 흐름 — `GET /students?limit=1&offset=0`
 
-```java
+```
 @GetMapping("/students")                          // ① URL 라우팅
 public ResponseEntity<?> list(
     @RequestParam(name="limit",  required=false) Integer limitParam,   // ② 쿼리 파라미터 추출
@@ -110,7 +110,7 @@ public ResponseEntity<?> list(
 
 ## 1-5. 응답 DTO는 왜 `record`?
 
-```java
+```
 public record ItemsResponse<T>(List<T> items, Page page) {
     public record Page(int limit, int offset, int total) {}
 }
@@ -123,7 +123,7 @@ public record ItemsResponse<T>(List<T> items, Page page) {
 
 ## 1-6. `/health` — 준비 완료 게이트
 
-```java
+```
 @GetMapping("/health")
 public ResponseEntity<Map<String,Object>> health() {
     if (!store.isReady())                                  // 데이터 생성 중?
@@ -169,7 +169,7 @@ public ResponseEntity<Map<String,Object>> health() {
 
 ## 2-1. 데이터 모델 — `SeedData.java`
 
-```java
+```
 public record SeedData(List<Department> departments, List<Professor> professors,
                        List<Course> courses, List<Student> students) {
     public record Department(int id, String name) {}
@@ -187,7 +187,7 @@ public record SeedData(List<Department> departments, List<Professor> professors,
 
 ## 2-2. 언제 실행되나 — `ApplicationRunner`
 
-```java
+```
 @Component
 public class SeedDataGenerator implements ApplicationRunner {
     public void run(ApplicationArguments args) {
@@ -206,7 +206,7 @@ public class SeedDataGenerator implements ApplicationRunner {
 
 ## 2-3. 핵심 트릭 — "조합 폭발"로 대량 리터럴 회피
 
-```java
+```
 static final String[] LAST_NAMES  = {"김","이",...};   // 10개
 static final String[] FIRST_NAMES = {"민준","서연",...}; // 10개
 static String[] buildNamePool() {                        // 10 × 10 = 100개
@@ -227,7 +227,7 @@ static String[] buildNamePool() {                        // 10 × 10 = 100개
 
 ## 2-4. 재현 가능한 난수 — 고정 시드
 
-```java
+```
 static final long SEED = 42L;
 Random random = new Random(SEED);
 ```
@@ -246,7 +246,7 @@ students : 1000~10999  enrollment : 900_000~ (enrollmentSeq)
 
 ## 2-6. 현실적인 값의 범위
 
-```java
+```
 int credits  = 3;                          // 모든 강좌 3학점(단순화)
 int capacity = 20 + random.nextInt(41);    // 20~60
 int enrolled = random.nextInt(capacity+1); // 0~capacity (이미 일부 찬 상태로 시작, 꽉 찬 강좌도 가능)
@@ -257,7 +257,7 @@ int enrolledCredits = random.nextInt(7)*3; // {0,3,...,18}
 
 ## 2-7. 성능 로깅
 
-```java
+```
 log.info("seed students ms={}", (t4 - t3));
 log.info("seed total ms={}", (t4 - start));
 ```
@@ -298,7 +298,7 @@ log.info("seed total ms={}", (t4 - start));
 
 ## 3-0. 문제 — 경쟁 조건(Race Condition)
 
-```java
+```
 // ❌ 보호 없는 코드 (문제 예시)
 if (course.enrolled < course.capacity) {  // ① 확인
     course.enrolled++;                      // ② 실행
@@ -311,7 +311,7 @@ if (course.enrolled < course.capacity) {  // ① 확인
 
 ## 3-1. 락 설계 — ReentrantLock 두 종류
 
-```java
+```
 private final Map<Integer, ReentrantLock> courseLocks  = new ConcurrentHashMap<>();
 private final Map<Integer, ReentrantLock> studentLocks = new ConcurrentHashMap<>();
 ```
@@ -322,7 +322,7 @@ private final Map<Integer, ReentrantLock> studentLocks = new ConcurrentHashMap<>
 
 ## 3-2. 락 생성 — computeIfAbsent
 
-```java
+```
 ReentrantLock courseLock = courseLocks.computeIfAbsent(courseId, ignored -> new ReentrantLock());
 ```
 
@@ -332,7 +332,7 @@ ReentrantLock courseLock = courseLocks.computeIfAbsent(courseId, ignored -> new 
 
 ## 3-3. 데드락 회피 — 락 순서 고정 (백미)
 
-```java
+```
 courseLock.lock();          // ① 항상 강좌 먼저
 try {
     studentLock.lock();     // ② 그 다음 학생
@@ -347,7 +347,7 @@ try {
 
 ## 3-4. 임계 구역 내부 — 순서가 곧 정책
 
-```java
+```
 if (enrollments.contains(key)) return duplicateEnrollment();      // (1) 중복 409+603
 if (course.enrolled >= course.capacity) return capacityExceeded(); // (2) 정원 409+600
 for (existing : enrollments) {  // (3) 학점 합산 + 시간충돌
@@ -363,7 +363,7 @@ course.enrolled++; enrollmentSeq.incrementAndGet(); enrollments.add(key); ... //
 
 ## 3-5. 락 없이도 안전한 자료구조
 
-```java
+```
 private final Set<EnrollmentKey> enrollments = ConcurrentHashMap.newKeySet();
 private final Map<EnrollmentKey, Long> enrollmentIds = new ConcurrentHashMap<>();
 private final AtomicLong enrollmentSeq = new AtomicLong(900_000);
@@ -378,7 +378,7 @@ private volatile int enrolled;   // CourseState
 
 ## 3-6. 얇은 컨트롤러
 
-```java
+```
 @PostMapping("/enrollments")
 public ResponseEntity<?> enroll(@RequestBody EnrollmentRequest request) {
     if (!store.isReady()) return ResponseEntity.status(503)...;
@@ -418,3 +418,107 @@ public ResponseEntity<?> enroll(@RequestBody EnrollmentRequest request) {
 
 - 내 답변: 예외가 터지면 임계구역에서 빠져나오기 때문에 unlock()을 하지 못하고 나와서 영원히 lock 상태에 빠진다.
 - ✅ 정답 (교정): 정확함. 예외로 그 아래 `unlock()`이 실행 안 된 채 메서드를 빠져나가 **락이 잠긴 채 영원히 남음 = 락 누수(lock leak)**. 락을 쥔 스레드는 이미 떠나서 **아무도 풀어줄 수 없음** → 이후 그 강좌에 신청하는 모든 스레드가 `courseLock.lock()`에서 **무한 대기 = 그 강좌 영구 동결**(신청·취소 불가). 다른 강좌는 락이 따로라 멀쩡. → 그래서 락은 거의 무조건 `try/finally`로 "무슨 일이 있어도 반드시 unlock" 보장.
+
+---
+
+# ④ 단계: 비즈니스 규칙 (학점 제한 & 시간표 충돌)
+
+> 규칙 2개: (1) 학생당 최대 18학점 → 409+601, (2) 동일 시간대 중복 불가 → 409+602.
+> 둘 다 "신규 강좌 vs 학생이 이미 든 모든 강좌" 비교 → 신청 내역 한 바퀴 순회.
+
+## 4-0. 한 번의 순회로 두 규칙 동시 처리
+
+```java
+int currentCredits = 0;
+Schedule newSchedule = Schedule.tryParse(course.schedule);
+if (newSchedule == null) return invalidRequest();
+for (EnrollmentKey existing : enrollments) {
+    if (existing.studentId != studentId) continue;      // 이 학생 것만
+    currentCredits += enrolledCourse.credits;           // ① 학점 누적
+    Schedule existingSchedule = Schedule.tryParse(enrolledCourse.schedule);
+    if (newSchedule.overlaps(existingSchedule)) return timeConflict(); // ② 즉시 충돌 검사
+}
+if (currentCredits + course.credits > student.maxCredits()) return creditLimitExceeded(); // ③ 루프 밖 최종 판정
+```
+
+- 학점은 루프서 누적(①), 시간충돌은 강좌마다 즉시(②), 학점 판정은 루프 끝나고 1회(③).
+
+## 4-1. 문자열 → 구조 파싱: `Schedule.tryParse()`
+
+```java
+private record Schedule(String day, int start, int end) {
+    static Schedule tryParse(String s) {
+        String[] parts = s.trim().split("\\s+");   // "월 09:00-10:30" → ["월","09:00-10:30"]
+        if (parts.length != 2) return null;
+        String[] times = parts[1].split("-");      // → ["09:00","10:30"]
+        Integer start = tryToMinutes(times[0]);    // 540
+        Integer end   = tryToMinutes(times[1]);    // 630
+        if (start==null || end==null || start>=end) return null;
+        return new Schedule(parts[0], start, end);
+    }
+}
+```
+
+- 저장은 문자열 `"월 09:00-10:30"`, 계산은 구조 `Schedule("월",540,630)`.
+- **시간을 "분"으로 환산**: `HH:MM` → `H*60+M` → 비교가 `<`, `>` 정수 산수로 간단해짐 (540<630).
+- `tryToMinutes`: 콜론 위치·숫자여부·범위(0~23, 0~59) 검증, 실패 시 null.
+
+## 4-2. 방어적 파싱 — 실패를 null로
+
+- `try-` 접두사 = "실패하면 예외 대신 null". 잘못된 형식/null 입력도 예외 없이 null → 호출부서 `invalidRequest()`(400).
+- **왜 예외 대신 null?** 입력 오류는 "예상 가능한 상황"이라 예외보다 null 체크가 흐름 단순·성능 유리. 단계별로 걸러 null 반환 = **방어적 프로그래밍**.
+- (실무 대안: `Optional<Schedule>`. 여기선 단순함 우선.)
+
+## 4-3. 시간 충돌 판정 — `overlaps()` (구간 겹침 공식)
+
+```java
+private boolean overlaps(Schedule other) {
+    if (!this.day.equals(other.day)) return false;         // 요일 다르면 안 겹침
+    return this.start < other.end && other.start < this.end;  // ★ 핵심 공식
+}
+```
+
+- **`startA < endB && startB < endA`** = 두 구간 겹침 표준 공식.
+- 유도: "안 겹침 = (endA<=startB) OR (endB<=startA)". 그 부정(드모르간) = (endA>startB) AND (endB>startA) = 코드와 일치.
+- **`<` vs `<=`**: `09:00-10:30` 다음 `10:30-12:00`은 경계만 맞닿고 안 겹침 → `<` 사용(맞닿음 허용, 연강 OK). 구간을 `[start, end)`로 봄. `<=`였다면 연강을 전부 충돌 오판.
+
+## 4-4. 학점 규칙 — 합산과 판정 분리
+
+```java
+currentCredits += enrolledCourse.credits;                       // 루프: 기존 합
+if (currentCredits + course.credits > student.maxCredits())     // 루프 밖: +신규 > 18?
+    return creditLimitExceeded();
+```
+
+- 하드코딩 18 대신 `student.maxCredits()` 사용 → 학생별 최대치 변경이 데이터만으로 가능.
+- ⚠️ **정합성 단일 출처**: 2단계 `enrolledCredits`(랜덤, 목록 표시용)는 판정에 안 씀. 실제 판정은 항상 `enrollments`(진짜 신청 기록) 순회로 재계산.
+
+## 4-5. 왜 검사가 전부 락 안에 있나 (3단계 연결)
+
+- 락 밖에서 "17학점, 하나 더 OK" 확인 후 락 안에서 등록하면, 그 사이 같은 학생의 다른 신청이 끼어들어 18 초과 가능 (또 다른 check-then-act).
+- **학생 락**으로 한 학생 신청 직렬화 → 읽기(합산)→판정→등록을 원자적으로. → 학생 락의 진짜 존재 이유가 여기서 완성.
+
+## ✅ 4단계 정리
+
+| 개념 | 이 프로젝트에서 |
+|---|---|
+| 문자열→구조 파싱 | "월 09:00-10:30" → Schedule("월",540,630) |
+| 분 환산 | HH:MM → H*60+M → 비교가 산수 |
+| 방어적 파싱 | 잘못된 입력은 예외 대신 null → 400 |
+| 구간 겹침 공식 | startA<endB && startB<endA (드모르간 유도) |
+| 경계 < vs <= | 맞닿음 허용(연강 OK), [start,end) 관점 |
+| 학점 합산/판정 분리 | 루프 누적, 루프 밖 판정, maxCredits() |
+| 정합성 단일 출처 | 표시용 enrolledCredits ≠ 판정용 enrollments 순회 |
+| 규칙도 락 안에서 | 학생 단위 check-then-act 방지 |
+
+## 🤔 확인 질문 & 정답
+
+**Q1. `overlaps()`에서 `<` 대신 `<=`를 썼다면, `09:00-10:30` 강좌를 든 학생이 `10:30-12:00` 강좌를 신청할 때 어떤 결과가 나올까? 그게 왜 문제일까?**
+
+- 내 답변: (작성 예정)
+- 정답: (답변 후 교정 예정)
+
+**Q2. 학점 판정에서 학생 객체의 `enrolledCredits`(2단계에서 랜덤으로 넣은 값)를 쓰지 않고, 굳이 `enrollments`를 순회해서 다시 학점을 합산하는 이유는?**
+
+- 내 답변: (작성 예정)
+- 정답: (답변 후 교정 예정)
