@@ -515,10 +515,165 @@ if (currentCredits + course.credits > student.maxCredits())     // 루프 밖: +
 
 **Q1. `overlaps()`에서 `<` 대신 `<=`를 썼다면, `09:00-10:30` 강좌를 든 학생이 `10:30-12:00` 강좌를 신청할 때 어떤 결과가 나올까? 그게 왜 문제일까?**
 
-- 내 답변: (작성 예정)
-- 정답: (답변 후 교정 예정)
+- 내 답변: 10:30 강좌를 수강신청 못함. 수강 가능한데도 못하게 됨.
+- ✅ 정답 (교정): 정확함. `<=`면 경계값 10:30에서 충돌로 오판 → 409 TIME_CONFLICT로 **신청 거부**. 문제는 이 둘이 **시간이 안 겹치는 연강(연속 수업)** 이라 원래 같이 들을 수 있어야 한다는 것 → **정상 신청을 막는 버그**. 그래서 `<`로 "끝시각=시작시각" 맞닿음은 허용.
 
 **Q2. 학점 판정에서 학생 객체의 `enrolledCredits`(2단계에서 랜덤으로 넣은 값)를 쓰지 않고, 굳이 `enrollments`를 순회해서 다시 학점을 합산하는 이유는?**
 
+- 내 답변: 진짜 판정을 하기 위해서. 정합성을 보장하기 위해서.
+- ✅ 정답 (교정): 맞음. 구체화하면 — `enrolledCredits`는 2단계에서 **랜덤으로 넣은 표시용 값**이라 실제 신청 강좌들의 학점 합과 일치 보장이 없고, 신청/취소해도 **자동 갱신되지 않음**(갱신 로직 없음). 이걸 믿으면 **틀린 값으로 18학점 제한 검사**. 반면 `enrollments`(실제 신청 기록) 순회는 **항상 현재 진짜 상태** 반영 = **정합성의 단일 출처(single source of truth)**.
+
+---
+
+# ⑤ 단계: 테스트 코드로 동시성 검증
+
+> 지금까지 "이론상 정원 초과 안 남"을 배움 → 이 단계는 그걸 실제 코드로 증명.
+
+## 5-0. 테스트가 store를 직접 만드는 이유 (계층 분리의 보상)
+
+```java
+InMemoryStore store = new InMemoryStore();   // 스프링·톰캣·HTTP 없음
+store.setData(new SeedData(...));            // 원하는 데이터만 직접 심음
+```
+
+- 동시성 로직이 전부 `InMemoryStore`(순수 자바)에 있어 **스프링 컨텍스트/HTTP 없이** `store.enroll()` 직접 호출 → 빠름.
+- 💡 1단계 Q1과 연결: 테스트는 컨테이너 **밖**이라 DI 없음 → 직접 `new` + `setData()`가 맞음. 앱 코드는 컨테이너 **안**이라 주입받아야 SeedDataGenerator가 채운 store 공유. 같은 `new`인데 맥락이 정반대.
+
+## 5-1. 시나리오 — "정원 1, 학생 100"
+
+```java
+new SeedData.Course(1, "자료구조", 3, /*capacity=*/1, /*enrolled=*/0, ...)   // 정원 1
+for (i<100) students.add(new Student(1000+i, ...));                         // 서로 다른 학생 100명
+```
+
+- 학생을 다 다르게 → 중복(603)이 아닌 **순수 정원 경쟁(600)** 만 테스트. 100명이 courseId=1에 몰림.
+
+## 5-2. 핵심 — CountDownLatch로 "동시에 출발"
+
+```java
+CountDownLatch start = new CountDownLatch(1);    // 출발 총성
+CountDownLatch done  = new CountDownLatch(100);  // 완주 확인
+for (i<100) executor.submit(() -> {
+    start.await();                  // ★ 모든 스레드가 여기서 대기
+    result = store.enroll(studentId, 1);
+    done.countDown();               // 끝나면 1 깎음
+});
+start.countDown();                  // ★ 총성! 100개 동시 출발
+done.await(10, SECONDS);            // 다 끝날 때까지 대기
+```
+
+- `CountDownLatch` = "카운트 0 될 때까지 기다리는 문". 두 개를 반대로 사용.
+- **start(1)**: 100 스레드를 `await()`에 대기시켰다가 `countDown()`으로 **일제히 출발** → 진짜 락 경쟁 발생. (단순 반복 호출은 앞 스레드가 이미 끝나 진짜 동시가 아님)
+- **done(100)**: 각자 끝날 때 1씩 깎고, 메인은 100개 다 끝날 때까지 대기 (없으면 테스트가 먼저 끝나 결과 못 봄).
+- `ExecutorService`(`newFixedThreadPool(100)`) = 스레드 풀. `submit()`으로 작업 던지고 `shutdownNow()`로 정리.
+
+## 5-3. AtomicInteger로 안전한 카운트
+
+```java
+AtomicInteger success = new AtomicInteger();
+if (result.success) success.incrementAndGet();   // 100 스레드 동시 증가
+```
+
+- 평범한 `int++`면 3단계 경쟁 조건으로 개수 유실 → `AtomicInteger`로 원자적 증가. (테스트조차 동시성을 제대로 다뤄야 정확)
+
+## 5-4. 3중 assert — "정확히 1명"
+
+```java
+assertEquals(1,  success.get());   // ① 성공 1명
+assertEquals(99, failure.get());   // ② 실패 99명 (①+②=100, 유실 없음도 검증)
+assertEquals(1,  enrolled);        // ③ 강좌 실제 enrolled도 1 (내부 상태까지)
+```
+
+- 락이 없었다면 success=2 / enrolled=31 등으로 **테스트 실패** → 버그 포착. "어떤 경우에도 정원 초과 불가"를 기계적으로 보증.
+
+## 5-5. 규칙 테스트 (EnrollmentRulesTest, 단일 스레드)
+
+**학점 초과(601):**
+```java
+for (courseId=1..6) store.enroll(1000, courseId);   // 요일 다 다름 → 충돌 없이 6×3=18학점
+result = store.enroll(1000, 7);                       // 21학점 시도
+assertEquals(601, result.errorCode);
+```
+- 강좌1("월 09:00-10:30")과 강좌6("월 10:30-12:00")은 같은 월요일이지만 맞닿기만 하고 안 겹침(4단계 Q1) → 둘 다 신청됨. 테스트 데이터가 `<` vs `<=` 경계를 은근히 검증.
+
+**시간 충돌(602):**
+```java
+Course(1, "월 09:00-10:30"), Course(2, "월 10:00-11:00")   // 10:00~10:30 겹침
+store.enroll(1000, 1);
+result = store.enroll(1000, 2);
+assertEquals(602, result.errorCode);   // overlaps: 540<660 && 600<630 = true
+```
+
+## ✅ 5단계 정리
+
+| 개념 | 이 프로젝트에서 |
+|---|---|
+| 계층 분리의 보상 | store만 new로 떼서 스프링·HTTP 없이 테스트 |
+| 시나리오 설계 | 정원 1 + 학생 100 (순수 정원 경쟁) |
+| CountDownLatch(start) | 대기 후 일제히 출발 → 진짜 동시성 |
+| CountDownLatch(done) | 모두 끝날 때까지 메인 대기 |
+| ExecutorService | 스레드 풀로 100개 관리 |
+| AtomicInteger | 동시 카운트 유실 없이 셈 |
+| 3중 assert | 성공1+실패99+enrolled1 |
+| 규칙 테스트 | 601(학점)·602(시간) 단일 스레드 검증 |
+
+## 🤔 확인 질문 & 정답
+
+**Q1. `start` 래치(CountDownLatch) 없이 그냥 for문에서 바로 `store.enroll()`을 100번 호출하면, 이 테스트가 "동시성"을 제대로 검증한다고 볼 수 있을까? 왜?**
+
 - 내 답변: (작성 예정)
 - 정답: (답변 후 교정 예정)
+
+**Q2. 마지막 assert에서 `success=1`, `failure=99`만 확인하지 않고 굳이 강좌의 실제 `enrolled==1`까지 추가로 확인하는 이유는?**
+
+- 내 답변: (작성 예정)
+- 정답: (답변 후 교정 예정)
+
+---
+
+# 🎓 전체 학습 완료 — 큰 그림
+
+```
+요청 흐름 (1단계)
+  Controller[HTTP 번역] ──→ InMemoryStore[로직·동시성]
+        │                          │
+   준비 게이트(/health)      락(강좌+학생, 순서고정) ← 데드락 회피 (3단계)
+        │                    임계구역: 중복→정원→시간→학점 (3·4단계)
+  ApplicationRunner로              │
+  1만명 동적 생성 (2단계)     동시성 자료구조 + volatile
+        │                          │
+        └──────── 테스트로 "정원 1, 100명 → 1명" 증명 (5단계)
+```
+
+**한 문장 요약**: DB 없이 인메모리로, check-then-act 경쟁 조건을 락으로 막아 정원·학점·시간 규칙을 원자적으로 지킨다.
+
+## 핵심 기술 키워드 총정리
+- **Spring Boot**: @SpringBootApplication, DI(생성자 주입), @RestController, @GetMapping/@PostMapping, @RequestParam/@RequestBody, ResponseEntity, ApplicationRunner
+- **Java 문법**: record, Stream, static final 초기화, 팩토리 메서드, 방어적 파싱(try-/null)
+- **동시성**: ReentrantLock, 락 분할(striping), 락 순서 고정(데드락 회피), try/finally unlock, computeIfAbsent, ConcurrentHashMap/newKeySet, AtomicLong/Integer, volatile
+- **테스트**: JUnit5, CountDownLatch, ExecutorService(스레드풀), 동시성 검증
+- **설계**: 계층 분리(api/data), 준비 게이트, 정합성 단일 출처, 에러 코드 체계
+- **알고리즘**: 시간 구간 겹침(startA<endB && startB<endA), 시간의 분 환산
+
+---
+
+# 🏭 실무 리팩토링 (H2 DB 도입) — 구현 로그
+
+> 브랜치 `feat/h2-migration`. 설계: `docs/DB_ARCHITECTURE.md`.
+
+## D1. 프로젝트 셋업 (JPA + H2) ✅
+
+**바꾼 파일 3개:**
+- `build.gradle`: 의존성 2줄 추가
+  - `implementation 'org.springframework.boot:spring-boot-starter-data-jpa'` — Hibernate(ORM) + Spring Data JPA + @Transactional
+  - `runtimeOnly 'com.h2database:h2'` — H2 DB. **runtimeOnly**인 이유: 코드는 H2를 직접 import 안 하고 JPA 표준에만 의존 → 런타임에만 필요. (DB 교체 시 이 한 줄만 바꾸면 됨 = 인터페이스 의존 원칙)
+- `src/main/resources/application.yml`: **신규 생성**
+  - `url: jdbc:h2:file:./data/course-db` — **파일 모드**(재시작해도 유지). mem:이면 소멸.
+  - `ddl-auto: update` — 엔티티 보고 테이블 자동 생성/수정. (실무 운영은 validate + Flyway 권장, 학습은 update)
+  - `show-sql` + `format_sql` — JPA가 날리는 실제 SQL을 콘솔에 출력(학습용). D5의 SELECT FOR UPDATE 확인에 활용 예정.
+  - `h2.console.enabled: /h2-console` — 브라우저로 DB GUI 확인.
+- `.gitignore`: `data/` 추가 — 로컬 DB 파일은 커밋 제외.
+
+**의존성 스코프 3종**: implementation(컴파일+런타임), runtimeOnly(런타임만), testImplementation(테스트만).
+
+**검증 결과**: 빌드 성공 / HikariPool→H2 연결 성공 / H2 콘솔 활성화 / `data/course-db.mv.db` 생성 / `/health` 200(기존 API 무손상) / `data/` git 무시 확인.
