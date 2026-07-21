@@ -677,3 +677,51 @@ assertEquals(602, result.errorCode);   // overlaps: 540<660 && 600<630 = true
 **의존성 스코프 3종**: implementation(컴파일+런타임), runtimeOnly(런타임만), testImplementation(테스트만).
 
 **검증 결과**: 빌드 성공 / HikariPool→H2 연결 성공 / H2 콘솔 활성화 / `data/course-db.mv.db` 생성 / `/health` 200(기존 API 무손상) / `data/` git 무시 확인.
+
+---
+
+# 🛠️ Git 실전 트러블슈팅 — 실수로 올라간 파일 제거 & push 오류
+
+> 실제 상황: PR 머지로 `application.yml`이 GitHub에 올라감 → 제거 시도 중 push가 안 되는 문제까지 겹침. 진단·해결 과정을 노트로 정리.
+
+## G1. push가 안 될 때 — 원인은 대개 3가지
+
+push 실패는 원인을 **분리 진단**하는 게 핵심. 아래 3개를 순서대로 확인한다.
+
+| 원인 | 진단 명령 | 증상 | 해결 |
+|------|-----------|------|------|
+| **인증 미설정** | `git push --dry-run` | `could not read Username for 'https://github.com'` | `gh auth login` (HTTPS) 또는 remote를 SSH로 전환 |
+| **로컬이 뒤처짐**(non-fast-forward) | `git rev-list --left-right --count origin/main...main` | `3  0` = origin이 3커밋 앞섬 | `git pull --ff-only` 로 fast-forward |
+| **upstream 미설정** | `git branch -vv` | 브랜치 옆에 `[origin/main]` 표시 없음 | `git branch --set-upstream-to=origin/main main` |
+
+> 💡 진단 3종 세트: `git status` / `git branch -vv` / `git push --dry-run`. 한 번에 하나씩 원인을 좁힌다.
+
+## G2. pull이 막힐 때 — stash로 안전하게
+
+- **증상**: `cannot pull with rebase: Your index contains uncommitted changes`
+- **원인**: pull이 rebase 모드인데 staged 변경이 남아 있으면 rebase 불가
+- **해결**: `git stash` → `git pull --ff-only` → `git stash pop` (작업 변경을 안 잃고 복원)
+
+## G3. `.gitignore`의 함정 — 이미 추적된 파일엔 효력 없음 ★ 핵심
+
+**근본 원인이었던 것**: `.gitignore` 경로 오타
+- 잘못됨: `**/src/main/`**`java/`**`resources/application.yml`
+- 실제 경로: `**/src/main/resources/application.yml`  (`java/`가 잘못 끼어 있었음)
+- → 패턴 불일치로 무시가 안 됐고, 그대로 커밋·push됨
+
+**3가지 교훈:**
+1. **`.gitignore`는 "아직 추적 안 된 파일"에만 작동.** 한 번 `git add`된 파일은 `.gitignore`에 넣어도 계속 추적됨 → **`git rm --cached <file>`** 로 추적을 끊어야 remote에서 삭제됨. (`--cached` = git에서만 제거, 디스크 파일은 유지)
+2. **`git check-ignore -v <file>`** 로 "정말 무시되는지 + 어느 줄이 매칭됐는지" 검증. 오타 잡는 데 필수.
+3. **최신 커밋에서 지워도 히스토리엔 남는다.** 실제 시크릿(비밀번호·토큰)이면 `git filter-repo`/BFG로 히스토리 세탁 + **자격증명 재발급**까지 필요. (이번엔 H2 기본값=빈 비번이라 세탁 불필요)
+
+## G4. 리소스 파일 위치 — `src/main/resources/`
+
+- 잘못된 위치 `src/main/java/resources/application.yml` 존재 → Spring Boot는 **`src/main/resources/`** 만 읽으므로 로딩 안 되는 죽은 파일 → 삭제.
+- 표준: 설정·정적 리소스 = `src/main/resources/`, 자바 코드 = `src/main/java/`.
+
+## G5. 예방책 (실무 표준)
+1. 새 파일 add 전 `git status`로 딸려 올라가는 것 확인
+2. `.gitignore` 수정 후 `git check-ignore -v`로 검증
+3. 설정 파일은 **템플릿(`application.yml.example`)만 커밋**, 실제 값은 로컬/환경변수(`.env`)로 관리
+
+**핵심 한 줄 요약**: `.gitignore` + 이미 추적된 파일 = **`git rm --cached` 필수** / push 안 되면 = **인증·fast-forward·tracking** 분리 진단.
