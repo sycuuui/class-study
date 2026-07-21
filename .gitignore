@@ -45,4 +45,4 @@ bin/
 ### H2 Database (local data files) ###
 data/course-db.mv.db
 
-**/src/main/java/resources/application.yml
+**/src/main/resources/application.yml
