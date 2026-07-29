@@ -1,14 +1,15 @@
 package com.musinsa.course.entity;
 
 import com.musinsa.course.enumate.SchduleDay;
+import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "course")
-public class Course {
+public class Course extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, columnDefinition = "bigint")
@@ -28,10 +29,10 @@ public class Course {
     private SchduleDay schdule_day;
 
     @Column(nullable = false)
-    private LocalDate schedule_start_min;
+    private LocalDateTime schedule_start_min;
 
     @Column(nullable = false)
-    private LocalDate schedule_start_max;
+    private LocalDateTime schedule_start_max;
 
     @Column(nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
