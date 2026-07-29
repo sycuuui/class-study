@@ -18,7 +18,7 @@ public class Course {
     private String name;
 
     @Column(nullable = false)
-    private int max_credits;
+    private int credits;
 
     @Column(nullable = false)
     private int capacity;
