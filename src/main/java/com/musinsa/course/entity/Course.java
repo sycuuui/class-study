@@ -34,14 +34,12 @@ public class Course extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime schedule_start_max;
 
-    @Column(nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
 
-    @Column(nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id")
+    @JoinColumn(name = "professor_id")
     private Professor professor;
 
     @Builder

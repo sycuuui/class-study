@@ -18,12 +18,10 @@ public class Enrollment extends BaseTimeEntity {
     @Column(name = "id", nullable = false, columnDefinition = "bigint")
     private Long id;
 
-    @Column(nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id")
     private Student student;
 
-    @Column(nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id")
     private Course course;

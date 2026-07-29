@@ -17,7 +17,6 @@ public class Student extends BaseTimeEntity {
     @Column(nullable = false)
     private int max_credits;
 
-    @Column(nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
