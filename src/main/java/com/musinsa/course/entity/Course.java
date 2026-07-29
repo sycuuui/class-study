@@ -1,12 +1,10 @@
 package com.musinsa.course.entity;
 
-import com.musinsa.course.enumate.SchduleDay;
+import com.musinsa.course.enumate.ScheduleDay;
 import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "course")
@@ -14,7 +12,6 @@ import java.time.LocalDateTime;
 public class Course extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false, columnDefinition = "bigint")
     private Long id;
 
     @Column(nullable = false)
@@ -26,26 +23,37 @@ public class Course extends BaseTimeEntity {
     @Column(nullable = false)
     private int capacity;
 
-    @Column(nullable = false)
+    @Column(name = "schedule_day", nullable = false)
     @Enumerated(EnumType.STRING)
-    private SchduleDay schdule_day;
+    private ScheduleDay scheduleDay;
 
-    @Column(nullable = false)
-    private LocalDateTime schedule_start_min;
+    @Column(name = "schedule_start_min", nullable = false)
+    private int scheduleStartMinute;
 
-    @Column(nullable = false)
-    private LocalDateTime schedule_start_max;
+    @Column(name = "schedule_end_min", nullable = false)
+    private int scheduleEndMinute;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id")
+    @JoinColumn(name = "department_id", nullable = false)
     private Department department;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "professor_id")
+    @JoinColumn(name = "professor_id", nullable = false)
     private Professor professor;
 
-    @Builder
-    public Course(String name, int max_credits, int min_credits, int capacity){
+    protected Course() {}
 
+    @Builder
+    public Course(String name, int credits, int capacity,
+                  ScheduleDay scheduleDay, int scheduleStartMinute, int scheduleEndMinute,
+                  Department department, Professor professor) {
+        this.name = name;
+        this.credits = credits;
+        this.capacity = capacity;
+        this.scheduleDay = scheduleDay;
+        this.scheduleStartMinute = scheduleStartMinute;
+        this.scheduleEndMinute = scheduleEndMinute;
+        this.department = department;
+        this.professor = professor;
     }
 }

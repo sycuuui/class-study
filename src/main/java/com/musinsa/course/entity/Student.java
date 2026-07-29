@@ -2,6 +2,7 @@ package com.musinsa.course.entity;
 
 import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 
 @Entity
@@ -10,16 +11,24 @@ import lombok.Getter;
 public class Student extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false, columnDefinition = "bigint")
     private Long id;
 
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private int max_credits;
+    @Column(name = "max_credits", nullable = false)
+    private int maxCredits;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id")
+    @JoinColumn(name = "department_id", nullable = false)
     private Department department;
+
+    protected Student() {}
+
+    @Builder
+    public Student(String name, int maxCredits, Department department) {
+        this.name = name;
+        this.maxCredits = maxCredits;
+        this.department = department;
+    }
 }

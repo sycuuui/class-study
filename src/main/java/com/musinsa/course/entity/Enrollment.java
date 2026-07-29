@@ -2,6 +2,7 @@ package com.musinsa.course.entity;
 
 import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 
 @Entity
@@ -9,22 +10,29 @@ import lombok.Getter;
 @Table(name = "enrollment",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "request_id",
-                        columnNames = {"student", "course"}
+                        name = "uq_enrollment_student_course",
+                        columnNames = {"student_id", "course_id"}
                 )
         }
 )
 public class Enrollment extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false, columnDefinition = "bigint")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id")
+    @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id")
+    @JoinColumn(name = "course_id", nullable = false)
     private Course course;
+
+    protected Enrollment() {}
+
+    @Builder
+    public Enrollment(Student student, Course course) {
+        this.student = student;
+        this.course = course;
+    }
 }
