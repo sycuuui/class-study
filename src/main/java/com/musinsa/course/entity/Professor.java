@@ -2,9 +2,11 @@ package com.musinsa.course.entity;
 
 import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
+import lombok.Getter;
 
 @Entity
 @Table(name = "professor")
+@Getter
 public class Professor extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

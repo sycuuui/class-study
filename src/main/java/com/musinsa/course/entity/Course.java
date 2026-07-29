@@ -4,11 +4,13 @@ import com.musinsa.course.enumate.SchduleDay;
 import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "course")
+@Getter
 public class Course extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
