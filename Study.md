@@ -694,6 +694,24 @@ assertEquals(602, result.errorCode);   // overlaps: 540<660 && 600<630 = true
 - **`BaseTimeEntity`(`@MappedSuperclass` + `AuditingEntityListener`)**: created/modified/deleted 시각 공통화. `@CreatedDate`가 동작하려면 `Application`에 **`@EnableJpaAuditing`** 필수.
 - **`@Builder`**: 생성자에 붙여 가독성 있는 객체 생성. JPA용 `protected 기본 생성자`와 **공존**시켜야 함.
 
+**검증 결과**: `compileJava` 성공 / 부팅 시 `create table` ×5 생성 / `Started Application` 에러 없음.
+
+### D2-b. Repository (Spring Data JPA)
+
+**만든 파일**: `repository/` 5개 — 전부 `interface extends JpaRepository<Entity, Long>`.
+
+- **Repository = 데이터 접근 계층**. 인터페이스만 선언하면 스프링이 런타임에 **구현체(프록시)를 자동 생성·빈 등록**. 구현 클래스를 우리가 안 짬.
+- `JpaRepository<Entity, Long>` 상속만으로 `save/findById/findAll(Pageable)/count/delete/existsById` 등 공짜 제공.
+- **쿼리 메서드**: 메서드 **이름 규칙**(`find`/`count`/`exists` + `By` + 필드명)으로 SQL 자동 생성. 이름은 **부팅 시 검증**(틀리면 `QueryCreationException`).
+- `EnrollmentRepository`에 3종 선언:
+  - `long countByCourse(Course)` → 정원 체크(D5의 `>= capacity`)
+  - `boolean existsByStudentAndCourse(Student, Course)` → 중복 신청 방어(UNIQUE와 이중 안전망). `And`로 두 조건 조합.
+  - `List<Enrollment> findByStudent(Student)` → 학생 시간표/학점 합산용
+- `ByCourse`(연관 객체) vs `ByCourseId`(FK값) 둘 다 가능 — 객체를 이미 들고 있으면 전자가 자연스러움.
+
+**검증 결과**: 부팅 성공, `QueryCreationException` 없음 → 3개 파생 쿼리 전부 SQL 변환 확인. **→ D2 완료.**
+
+---
 
 # 🛠️ Git 실전 트러블슈팅 — 실수로 올라간 파일 제거 & push 오류
 
