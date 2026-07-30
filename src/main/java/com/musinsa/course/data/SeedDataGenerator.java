@@ -5,11 +5,13 @@ import java.util.List;
 import java.util.Random;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component
+@Order(1)
 public class SeedDataGenerator implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(SeedDataGenerator.class);
     private static final int DEPARTMENT_MIN = 10;
