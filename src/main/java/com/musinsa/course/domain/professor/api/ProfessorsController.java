@@ -1,7 +1,7 @@
-package com.musinsa.course.api;
+package com.musinsa.course.domain.professor.api;
 
-import com.musinsa.course.api.response.ErrorResponse;
-import com.musinsa.course.api.response.ItemsResponse;
+import com.musinsa.course.global.api.response.ErrorResponse;
+import com.musinsa.course.global.api.response.ItemsResponse;
 import com.musinsa.course.data.InMemoryStore;
 import com.musinsa.course.data.SeedData;
 import java.util.List;
@@ -12,16 +12,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class StudentsController {
+public class ProfessorsController {
     private static final int DEFAULT_LIMIT = 50;
     private static final int DEFAULT_OFFSET = 0;
     private final InMemoryStore store;
 
-    public StudentsController(InMemoryStore store) {
+    public ProfessorsController(InMemoryStore store) {
         this.store = store;
     }
 
-    @GetMapping("/students")
+    @GetMapping("/professors")
     public ResponseEntity<?> list(
         @RequestParam(name = "limit", required = false) Integer limitParam,
         @RequestParam(name = "offset", required = false) Integer offsetParam
@@ -31,33 +31,29 @@ public class StudentsController {
         if (limit < 1 || limit > 200 || offset < 0) {
             return ResponseEntity.badRequest().body(invalidRequest());
         }
-        int total = store.getStudents().size();
-        List<StudentItem> items = store.getStudents().stream()
+        int total = store.getProfessors().size();
+        List<ProfessorItem> items = store.getProfessors().stream()
             .skip(offset)
             .limit(limit)
-            .map(StudentsController::toItem)
+            .map(ProfessorsController::toItem)
             .toList();
         return ResponseEntity.ok(new ItemsResponse<>(items, new ItemsResponse.Page(limit, offset, total)));
     }
 
-    private static StudentItem toItem(SeedData.Student student) {
-        return new StudentItem(
-            student.id(),
-            student.name(),
-            student.departmentId(),
-            student.departmentName(),
-            student.maxCredits(),
-            student.enrolledCredits()
+    private static ProfessorItem toItem(SeedData.Professor professor) {
+        return new ProfessorItem(
+            professor.id(),
+            professor.name(),
+            professor.departmentId(),
+            professor.departmentName()
         );
     }
 
-    public record StudentItem(
+    public record ProfessorItem(
         int id,
         String name,
         int departmentId,
-        String departmentName,
-        int maxCredits,
-        int enrolledCredits
+        String departmentName
     ) {
     }
 

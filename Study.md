@@ -680,6 +680,39 @@ assertEquals(602, result.errorCode);   // overlaps: 540<660 && 600<630 = true
 
 ---
 
+## D2. 엔티티 설계 (JPA 매핑) ✅
+
+**만든 파일**: `entity/` 5개(Department·Professor·Student·Course·Enrollment) + `enumate/ScheduleDay` + `global/common/BaseTimeEntity`.
+
+### 핵심 개념
+- **엔티티는 record 불가**: JPA가 프록시 상속(지연로딩)·기본 생성자로 빈 객체 생성·필드 주입을 해야 해서 `final`·불변인 record와 충돌 → 일반 class + `protected` 기본 생성자 + mutable 필드.
+- **`@GeneratedValue(IDENTITY)`**: PK를 DB auto_increment에 위임. 그래서 `id`는 `Long`(저장 전 null).
+- **`@ManyToOne(fetch = LAZY)`**: N:1 연관을 객체 참조로. LAZY = 실제 접근 시에만 조회(N+1·과다조회 방지). 실무 기본값.
+- **연관관계 필드엔 `@Column` 금지** → `@JoinColumn(name, nullable)`이 FK 컬럼 담당. `@Column`은 단순 값 컬럼 전용.
+- **`@Enumerated(EnumType.STRING)`**: 요일을 enum으로. ORDINAL(숫자) 금지 — 순서 바뀌면 데이터 깨짐, STRING이 안전.
+- **복합 UNIQUE**: `@Table(uniqueConstraints=@UniqueConstraint(columnNames={"student_id","course_id"}))` → 중복 신청을 **DB가 차단**(인메모리 `contains()` 대체). columnNames는 **자바 필드명이 아니라 실제 DB 컬럼명**.
+- **`BaseTimeEntity`(`@MappedSuperclass` + `AuditingEntityListener`)**: created/modified/deleted 시각 공통화. `@CreatedDate`가 동작하려면 `Application`에 **`@EnableJpaAuditing`** 필수.
+- **`@Builder`**: 생성자에 붙여 가독성 있는 객체 생성. JPA용 `protected 기본 생성자`와 **공존**시켜야 함.
+
+**검증 결과**: `compileJava` 성공 / 부팅 시 `create table` ×5 생성 / `Started Application` 에러 없음.
+
+### D2-b. Repository (Spring Data JPA)
+
+**만든 파일**: `repository/` 5개 — 전부 `interface extends JpaRepository<Entity, Long>`.
+
+- **Repository = 데이터 접근 계층**. 인터페이스만 선언하면 스프링이 런타임에 **구현체(프록시)를 자동 생성·빈 등록**. 구현 클래스를 우리가 안 짬.
+- `JpaRepository<Entity, Long>` 상속만으로 `save/findById/findAll(Pageable)/count/delete/existsById` 등 공짜 제공.
+- **쿼리 메서드**: 메서드 **이름 규칙**(`find`/`count`/`exists` + `By` + 필드명)으로 SQL 자동 생성. 이름은 **부팅 시 검증**(틀리면 `QueryCreationException`).
+- `EnrollmentRepository`에 3종 선언:
+  - `long countByCourse(Course)` → 정원 체크(D5의 `>= capacity`)
+  - `boolean existsByStudentAndCourse(Student, Course)` → 중복 신청 방어(UNIQUE와 이중 안전망). `And`로 두 조건 조합.
+  - `List<Enrollment> findByStudent(Student)` → 학생 시간표/학점 합산용
+- `ByCourse`(연관 객체) vs `ByCourseId`(FK값) 둘 다 가능 — 객체를 이미 들고 있으면 전자가 자연스러움.
+
+**검증 결과**: 부팅 성공, `QueryCreationException` 없음 → 3개 파생 쿼리 전부 SQL 변환 확인. **→ D2 완료.**
+
+---
+
 # 🛠️ Git 실전 트러블슈팅 — 실수로 올라간 파일 제거 & push 오류
 
 > 실제 상황: PR 머지로 `application.yml`이 GitHub에 올라감 → 제거 시도 중 push가 안 되는 문제까지 겹침. 진단·해결 과정을 노트로 정리.

@@ -1,6 +1,6 @@
-package com.musinsa.course.api;
+package com.musinsa.course.domain.department.api;
 
-import com.musinsa.course.api.response.ErrorResponse;
+import com.musinsa.course.global.api.response.ErrorResponse;
 import com.musinsa.course.data.InMemoryStore;
 import com.musinsa.course.data.InMemoryStore.TimetableResult;
 import com.musinsa.course.data.SeedData;

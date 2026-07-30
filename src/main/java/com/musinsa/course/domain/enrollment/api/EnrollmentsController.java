@@ -1,6 +1,6 @@
-package com.musinsa.course.api;
+package com.musinsa.course.domain.enrollment.api;
 
-import com.musinsa.course.api.response.ErrorResponse;
+import com.musinsa.course.global.api.response.ErrorResponse;
 import com.musinsa.course.data.InMemoryStore;
 import com.musinsa.course.data.InMemoryStore.EnrollmentResult;
 import java.util.Map;

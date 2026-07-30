@@ -1,4 +1,4 @@
-package com.musinsa.course.api;
+package com.musinsa.course.global.api;
 
 import com.musinsa.course.data.InMemoryStore;
 import java.util.Map;
