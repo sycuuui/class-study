@@ -711,6 +711,29 @@ assertEquals(602, result.errorCode);   // overlaps: 540<660 && 600<630 = true
 
 **검증 결과**: 부팅 성공, `QueryCreationException` 없음 → 3개 파생 쿼리 전부 SQL 변환 확인. **→ D2 완료.**
 
+> 참고: 이후 패키지 구조를 **도메인 중심**으로 재편(`domain/{course,department,professor,student,enrollment}/{entity,repository,api}` + `global/`). 브랜치 `feat/DBseed`.
+
+---
+
+## D3. 시드 데이터를 DB로 (DbSeeder) ✅
+
+**만든 파일**: `data/DbSeeder.java` (`@Component @Order(2) ApplicationRunner`).
+인메모리로 생성된 record(`store`)를 읽어 → 엔티티 변환 → DB 저장. `SeedDataGenerator`엔 `@Order(1)` 부여로 순서 보장.
+
+### 배운 핵심 3가지
+1. **"숫자 id → 엔티티 객체" 매핑** (`Map<Integer, Department> deptMap`) ★
+   - record는 `departmentId`(숫자), 엔티티는 `Department`(객체 참조). DB가 준 새 IDENTITY id는 옛 record id와 **다르므로**, `save` 결과를 맵에 담아(`deptMap.put(r.id(), saved)`) 자식에서 꺼내 연결. **마이그레이션의 심장.**
+2. **저장 순서 = FK 위상정렬**: Department → Professor/Student → Course. 부모 먼저 저장해야 자식이 참조 가능. `@Order(1→2)`도 같은 원리(in-memory 시드 후 DB 시드).
+3. **파일 모드 중복 시드 함정**: 파일 모드는 재시작해도 데이터 잔존 → 매 부팅 시드하면 누적. **`if (count() > 0) return;` 가드**로 방어. (재부팅 시 "skipped" 확인)
+
+### 그 외 설계·성능
+- **버린 필드**: `Course.enrolled`(→ COUNT로 계산), `Student.enrolledCredits`(죽은 필드). enrollment 테이블은 **비워둠**(실제 신청은 D5 API로).
+- **schedule 파싱**: `"월 09:00-10:30"` → `ScheduleDay.MONDAY` + `540`/`630`분. `split(" ")`/`split("-")`/`hour*60+min`.
+- **한 트랜잭션**: `run()`에 `@Transactional` → 전체 1커밋. 학생 1만은 `saveAll`.
+- **IDENTITY 배치 한계**: `GenerationType.IDENTITY`는 JDBC 배치 insert 비활성(insert마다 생성 id 필요). 그런데도 842ms인 건 H2가 **인프로세스**라 왕복이 싼 덕. 원격 DB·대량이면 SEQUENCE 전략/JdbcTemplate 배치로.
+
+**검증 결과**: 부팅 시 `db seed departments=12 / professors=100 / students=10000 / courses=500`, `total ms=842`. 재부팅 시 `db seed skipped (already seeded)`. **→ D3 완료.**
+
 ---
 
 # 🛠️ Git 실전 트러블슈팅 — 실수로 올라간 파일 제거 & push 오류
