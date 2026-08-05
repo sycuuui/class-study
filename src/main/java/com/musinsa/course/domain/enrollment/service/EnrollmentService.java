@@ -9,12 +9,13 @@ import com.musinsa.course.domain.enrollment.service.validator.EnrollmentValidato
 import com.musinsa.course.domain.student.entity.Student;
 import com.musinsa.course.domain.student.repository.StudentRepository;
 import com.musinsa.course.domain.student.service.validator.StudentValidator;
+import com.musinsa.course.global.exception.ApplicationException;
+import com.musinsa.course.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,10 +32,10 @@ public class EnrollmentService {
     public void requestEnrollment(long studentId, long courseId){
         //학생 존재
         Student student = studentRepository.findByIdAndDeletedAtIsNull(studentId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 학생입니다."));
+                .orElseThrow(() -> new ApplicationException(ErrorCode.STUDENT_NOT_FOUND));
         //강좌 존재
         Course course = courseRepository.findCourseByIdAndDeletedAtIsNull(courseId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 강좌입니다."));
+                .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 
         //강좌 기간 확인(추후 필요 ex. 년도+학기)(이건 @Schduler로 일정 시간이 되면 학기별로 강좌 및 학생 기록 닫기)
 
@@ -70,16 +71,16 @@ public class EnrollmentService {
     public void cancel(long studentId, long courseId) {
         //학생 존재
         Student student = studentRepository.findByIdAndDeletedAtIsNull(studentId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 학생입니다."));
+                .orElseThrow(() -> new ApplicationException(ErrorCode.STUDENT_NOT_FOUND));
         //강좌 존재
         Course course = courseRepository.findCourseByIdAndDeletedAtIsNull(courseId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 강좌입니다."));
+                .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 
         //강좌 기간 확인(추후 필요 ex. 년도+학기)(이건 @Schduler로 일정 시간이 되면 학기별로 강좌 및 학생 기록 닫기)
 
         //수강 신청 존재
         Enrollment enrollment = enrollmentRepository.findByStudentAndCourseAndDeletedAtIsNull(student,course)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 수강 신청입니다."));
+                .orElseThrow(() -> new ApplicationException(ErrorCode.ENROLLMENT_NOT_FOUND));
 
         enrollmentRepository.delete(enrollment);
     }
