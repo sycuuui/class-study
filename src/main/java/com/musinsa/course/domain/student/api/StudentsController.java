@@ -3,11 +3,11 @@ package com.musinsa.course.domain.student.api;
 import com.musinsa.course.domain.student.dto.response.ItemResponse;
 import com.musinsa.course.domain.student.dto.response.StudentItem;
 import com.musinsa.course.domain.student.service.StudentService;
+import com.musinsa.course.global.common.ApplicationResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,11 +21,11 @@ public class StudentsController {
     private final StudentService studentService;
 
     @GetMapping("/students")
-    public ResponseEntity<?> list(
+    public ApplicationResponse<ItemResponse> list(
         @RequestParam(name = "limit", defaultValue = "50") @Min(1) @Max(200) int limit,
         @RequestParam(name = "offset", defaultValue = "0") @Min(0) int offset
     ) {
         Page<StudentItem> studentItems = studentService.findStudents(limit, offset);
-        return ResponseEntity.ok(ItemResponse.of(studentItems));
+        return ApplicationResponse.ok(ItemResponse.of(studentItems));
     }
 }

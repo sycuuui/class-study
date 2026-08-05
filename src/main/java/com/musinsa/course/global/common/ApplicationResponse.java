@@ -16,36 +16,27 @@ public record ApplicationResponse<T>(
 ) {
 
     public static <T> ApplicationResponse<T> ok(T data) {
-        return ApplicationResponse.<T>builder()
-                .timestamp(LocalDateTime.now())
-                .code(ErrorCode.SUCCESS.getCode())
-                .message(ErrorCode.SUCCESS.getMessage())
-                .data(data)
-                .build();
+        return of(ErrorCode.SUCCESS, data);
     }
 
     public static <T> ApplicationResponse<T> ok() {
-        return ApplicationResponse.<T>builder()
-                .timestamp(LocalDateTime.now())
-                .code(ErrorCode.SUCCESS.getCode())
-                .message(ErrorCode.SUCCESS.getMessage())
-                .build();
+        return of(ErrorCode.SUCCESS, null);
     }
 
     public static <T> ApplicationResponse<T> created(T data) {
-        return ApplicationResponse.<T>builder()
-                .timestamp(LocalDateTime.now())
-                .code(ErrorCode.SUCCESS.getCode())
-                .message(ErrorCode.SUCCESS.getMessage())
-                .data(data)
-                .build();
+        return of(ErrorCode.CREATED, data);
     }
 
     public static <T> ApplicationResponse<T> created() {
+        return of(ErrorCode.CREATED, null);
+    }
+
+    private static <T> ApplicationResponse<T> of(ErrorCode code, T data) {
         return ApplicationResponse.<T>builder()
                 .timestamp(LocalDateTime.now())
-                .code(ErrorCode.SUCCESS.getCode())
-                .message(ErrorCode.SUCCESS.getMessage())
+                .code(code.getCode())
+                .message(code.getMessage())
+                .data(data)
                 .build();
     }
 }

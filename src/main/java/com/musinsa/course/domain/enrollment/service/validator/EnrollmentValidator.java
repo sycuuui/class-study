@@ -3,6 +3,8 @@ package com.musinsa.course.domain.enrollment.service.validator;
 import com.musinsa.course.domain.course.entity.Course;
 import com.musinsa.course.domain.course.enumate.ScheduleDay;
 import com.musinsa.course.domain.enrollment.entity.Enrollment;
+import com.musinsa.course.global.exception.ApplicationException;
+import com.musinsa.course.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -10,9 +12,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class EnrollmentValidator {
 
-    public void validateNotDuplicated(boolean exsits){
-        if(exsits){
-            throw new RuntimeException("중복 요청입니다.");
+    public void validateNotDuplicated(boolean exists){
+        if(exists){
+            throw new ApplicationException(ErrorCode.DUPLICATE_ENROLLMENT);
         }
     }
 
@@ -25,7 +27,7 @@ public class EnrollmentValidator {
         if(scheduleDay!=enrollmentCourse.getScheduleDay()) return;
         if(enrollmentCourse.getScheduleEndMinute()>courseStartTime
                 && enrollmentCourse.getScheduleStartMinute()<courseEndTime){
-            throw new RuntimeException("시간표가 겹칩니다.");
+            throw new ApplicationException(ErrorCode.SCHEDULE_CONFLICT);
         }
     }
 }

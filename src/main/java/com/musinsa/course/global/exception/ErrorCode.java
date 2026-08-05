@@ -25,7 +25,20 @@ public enum ErrorCode {
     // 3000: Auth Error
     WRONG_TOKEN_EXCEPTION(HttpStatus.UNAUTHORIZED, 3002, "유효하지 않은 토큰입니다."),
     LOGOUT_TOKEN_EXCEPTION(HttpStatus.UNAUTHORIZED, 3003, "로그아웃된 토큰입니다"),
-    WRONG_TOKEN(HttpStatus.UNAUTHORIZED, 3004, "유효하지 않은 토큰입니다.");
+    WRONG_TOKEN(HttpStatus.UNAUTHORIZED, 3004, "유효하지 않은 토큰입니다."),
+
+    // 5000: Student Error
+    STUDENT_NOT_FOUND(HttpStatus.NOT_FOUND, 5000, "존재하지 않는 학생입니다."),
+
+    // 6000: Course Error
+    COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, 6000, "존재하지 않는 강좌입니다."),
+
+    // 7000: Enrollment Error
+    ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, 7000, "존재하지 않는 수강 신청입니다."),
+    DUPLICATE_ENROLLMENT(HttpStatus.CONFLICT, 7001, "이미 신청한 강좌입니다."),
+    CAPACITY_EXCEEDED(HttpStatus.CONFLICT, 7002, "수강 정원을 초과했습니다."),
+    SCHEDULE_CONFLICT(HttpStatus.CONFLICT, 7003, "시간표가 겹칩니다."),
+    CREDIT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, 7004, "수강 가능 학점을 초과했습니다.");
 
 
     private final HttpStatus httpStatus;

@@ -1,33 +1,38 @@
 package com.musinsa.course.domain.course.api;
 
-import com.musinsa.course.global.api.response.ErrorResponse;
 import com.musinsa.course.data.InMemoryStore;
 import com.musinsa.course.data.InMemoryStore.TimetableResult;
 import com.musinsa.course.data.SeedData;
+import com.musinsa.course.global.common.ApplicationResponse;
+import com.musinsa.course.global.exception.ApplicationException;
+import com.musinsa.course.global.exception.ErrorCode;
 import java.util.List;
-import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 시간표 조회. 데이터 소스는 아직 InMemoryStore(추후 DB 이관 예정)이나,
+ * 응답/예외 형식만 공통 구조(ApplicationResponse/ApplicationException)로 통일.
+ */
 @RestController
 @RequiredArgsConstructor
 public class TimetableController {
     private final InMemoryStore store;
 
     @GetMapping("/timetable")
-    public ResponseEntity<?> get(@RequestParam(name = "studentId") int studentId) {
+    public ApplicationResponse<TimetableResponse> get(@RequestParam(name = "studentId") int studentId) {
         TimetableResult result = store.timetable(studentId);
         if (!result.success) {
-            return ResponseEntity.status(result.httpStatus).body(errorBody(result));
+            throw new ApplicationException(
+                result.httpStatus == 404 ? ErrorCode.STUDENT_NOT_FOUND : ErrorCode.INVALID_VALUE_EXCEPTION);
         }
         List<TimetableItem> items = result.items.stream()
             .map(TimetableController::toItem)
             .toList();
-        return ResponseEntity.ok(new TimetableResponse(studentId, items, result.totalCredits));
+        return ApplicationResponse.ok(new TimetableResponse(studentId, items, result.totalCredits));
     }
 
     public record TimetableResponse(int studentId, List<TimetableItem> items, int totalCredits) {
@@ -52,12 +57,5 @@ public class TimetableController {
             course.professorId(),
             course.professorName()
         );
-    }
-
-    private static ErrorResponse errorBody(TimetableResult result) {
-        Map<String, Object> details = Map.of(
-            "studentId", result.studentId
-        );
-        return new ErrorResponse(new ErrorResponse.Error(result.errorCode, result.message, details));
     }
 }
