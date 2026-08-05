@@ -814,3 +814,36 @@ push 실패는 원인을 **분리 진단**하는 게 핵심. 아래 3개를 순�
 - `GET /students?limit=3&offset=0` → 학생 3명, `pageNum=0`, `total=10000`, `totalPages=3334` ✅
 - `GET /students?limit=3&offset=3` → 다음 페이지(id 4~6), `pageNum=1` ✅
 - `GET /students?limit=999` → **400** `{"error":{"code":400,"message":"잘못된 요청 파라미터","details":{"detail":"list.limit: 200 이하여야 합니다"}}}` ✅
+
+---
+
+## D4-b. courses / professors 엔드포인트 마이그레이션 (students 패턴 확장)
+
+**목표**: InMemoryStore 직접 조회하던 `/courses`, `/professors`를 `Controller→Service→Repository` + DTO + 검증으로 통일.
+
+### 결정 사항
+- **응답 래퍼**: 도메인별 전용 대신 **제네릭 `global.ItemsResponse<T>`(items, page{limit,offset,total}) 재사용** → 래퍼 중복 제거. (student의 전용 ItemResponse는 추후 여기로 정렬 예정)
+- **enrolled(수강인원)**: enrollment 미시드라 지금은 CourseItem에서 **제외**, D5에서 집계로 추가.
+
+### 새로 배운 핵심: N+1 문제와 @EntityGraph ★
+- **문제**: CourseItem은 `departmentName`+`professorName`(둘 다 LAZY)이 필요. 목록 50개를 DTO로 변환하면, 각 행마다 department/professor를 조회 → 최대 **1 + 50 + 50 쿼리**(N+1).
+- **해결**: 리포지토리 메서드에 `@EntityGraph(attributePaths = {"department","professor"})` → Hibernate가 **fetch join 한 방**으로 연관까지 로딩. 로그에서 `course ... left join department ... join professor` 확인.
+- **왜 페이징과 함께 써도 안전한가**: department/professor는 **to-one**. to-**many**(컬렉션) fetch join + 페이징이면 `HHH000104`(메모리 페이징) 경고가 뜨지만, to-one은 행 수가 안 불어나 안전.
+- **대안 비교**: `@Query`에 `join fetch`를 직접 쓸 수도 있지만, `@EntityGraph`가 기존 파생 쿼리(`findByDepartment_Id`)에 얹기 쉽고 선언적.
+
+### 필터 처리
+- `/courses?departmentId=` → 파생 쿼리 `findByDepartment_Id(Long, Pageable)`. Service에서 `departmentId == null ? findAll : findByDepartment_Id`로 분기.
+
+### DTO 포맷팅
+- DB엔 `schedule` 문자열이 없음(`scheduleDay(enum) + start/endMinute(int)`) → CourseItem에서 `"월 09:00-10:30"`로 조립(`day.getDescription() + toHhmm(min)`), `toHhmm = String.format("%02d:%02d", m/60, m%60)`.
+
+### 검증 (실제 API)
+- `GET /courses?limit=2` → schedule="화 10:30-12:00", total=500 ✅
+- `GET /courses?departmentId=3&limit=2` → 전자공학과만, total=40 ✅
+- `GET /courses?limit=0` → 400 ("1 이상이어야 합니다") ✅
+- `GET /professors?limit=2&offset=2` → total=100, 페이징 ✅
+- SQL 로그에서 fetch join 확인 → N+1 없음 ✅
+
+### 남은 InMemoryStore 의존 (D5에서 처리)
+- `/timetable?studentId` — 학생 수강내역 → enrollment 조회 필요
+- `/enrollments` POST/DELETE — 수강신청/취소 = 동시성 제어(비관적 락) 핵심
