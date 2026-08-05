@@ -1,4 +1,4 @@
-package com.musinsa.course.domain.department.api;
+package com.musinsa.course.domain.course.api;
 
 import com.musinsa.course.global.api.response.ErrorResponse;
 import com.musinsa.course.data.InMemoryStore;

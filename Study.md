@@ -781,3 +781,36 @@ push 실패는 원인을 **분리 진단**하는 게 핵심. 아래 3개를 순�
 3. 설정 파일은 **템플릿(`application.yml.example`)만 커밋**, 실제 값은 로컬/환경변수(`.env`)로 관리
 
 **핵심 한 줄 요약**: `.gitignore` + 이미 추적된 파일 = **`git rm --cached` 필수** / push 안 되면 = **인증·fast-forward·tracking** 분리 진단.
+
+---
+
+## D4. Service 계층 + DTO + Bean Validation (students 엔드포인트 템플릿)
+
+**목표**: InMemoryStore 직접 조회 → `Controller → Service → Repository` 레이어 분리 + 응답 DTO + 선언형 검증.
+
+### 만든 것
+- `domain/student/service/StudentService` — `@Service`, `@Transactional(readOnly=true)`
+- `domain/student/dto/response/StudentItem` — 응답 DTO(record) + `from(Student)` 팩토리
+- `domain/student/dto/response/ItemResponse` — 목록 응답 래퍼 + `of(Page<StudentItem>)` 팩토리
+- `global/api/ApiExceptionHandler` — `@RestControllerAdvice`로 검증 실패 → 400
+- `StudentsController` — `@Validated` + `@Min/@Max`로 파라미터 검증
+
+### 핵심 개념 3가지
+1. **`@Transactional(readOnly=true)` 안에서 DTO 변환** — `department`가 `@ManyToOne(LAZY)`라, 트랜잭션이 닫힌 뒤 `getDepartment().getName()`을 만지면 `LazyInitializationException`. 그래서 **Service가 DTO 변환까지 끝내고** Controller엔 이미 변환된 DTO만 전달. (엔티티를 컨트롤러로 넘기지 않는다)
+2. **`Page.map()`** — `findAll(pageable).map(StudentItem::from)` 한 줄. 원본을 바꾸는 게 아니라 **새 Page를 리턴**(total/pageNum 등 메타 유지) → 리턴값을 그대로 반환해야 함.
+3. **선언형 검증** — 수동 `if (limit>200)` 대신 `@Min/@Max`. `@Validated`(클래스)가 파라미터 제약을 활성화하고, 위반 시 `ConstraintViolationException` → 핸들러가 400.
+
+### 실수 & 교훈
+- 람다와 메서드참조 혼용: `student -> StudentItem::from(student)` ❌ → `StudentItem::from` (택1)
+- `Page.map()` 결과를 버리고 `return null` ❌ → 리턴값을 그대로 반환
+- 팩토리 `of()`에서 `total`/`totalPages`를 **어디선가 온 변수**로 착각 → 실은 **파라미터 `Page`에서 꺼냄**: `getContent()/getTotalElements()/getTotalPages()/getNumber()`
+- `StudentRepository.findAll(Pageable)` 오버라이드는 **JpaRepository가 이미 제공**해서 중복(있어도 무해)
+
+### 계층 분리 원칙
+- `Page`(도메인/영속 언어)는 Service까지. HTTP 표현(`ItemResponse`)은 Controller에서 입힘.
+- 향후 courses/professors는 같은 패턴 복제. `ItemResponse`가 지금은 학생 전용(`List<StudentItem>`)이라, 복제 시 제네릭(`ItemsResponse<T>`) 통합 여부 결정 예정.
+
+### 검증 (실제 API)
+- `GET /students?limit=3&offset=0` → 학생 3명, `pageNum=0`, `total=10000`, `totalPages=3334` ✅
+- `GET /students?limit=3&offset=3` → 다음 페이지(id 4~6), `pageNum=1` ✅
+- `GET /students?limit=999` → **400** `{"error":{"code":400,"message":"잘못된 요청 파라미터","details":{"detail":"list.limit: 200 이하여야 합니다"}}}` ✅
