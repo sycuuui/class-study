@@ -1,63 +1,36 @@
 package com.musinsa.course.domain.professor.api;
 
-import com.musinsa.course.global.api.response.ErrorResponse;
+import com.musinsa.course.domain.professor.dto.response.ProfessorItem;
+import com.musinsa.course.domain.professor.service.ProfessorService;
 import com.musinsa.course.global.api.response.ItemsResponse;
-import com.musinsa.course.data.InMemoryStore;
-import com.musinsa.course.data.SeedData;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Validated
 public class ProfessorsController {
-    private static final int DEFAULT_LIMIT = 50;
-    private static final int DEFAULT_OFFSET = 0;
-    private final InMemoryStore store;
 
-    public ProfessorsController(InMemoryStore store) {
-        this.store = store;
+    private final ProfessorService professorService;
+
+    public ProfessorsController(ProfessorService professorService) {
+        this.professorService = professorService;
     }
 
     @GetMapping("/professors")
     public ResponseEntity<?> list(
-        @RequestParam(name = "limit", required = false) Integer limitParam,
-        @RequestParam(name = "offset", required = false) Integer offsetParam
+        @RequestParam(name = "limit", defaultValue = "50") @Min(1) @Max(200) int limit,
+        @RequestParam(name = "offset", defaultValue = "0") @Min(0) int offset
     ) {
-        int limit = limitParam == null ? DEFAULT_LIMIT : limitParam;
-        int offset = offsetParam == null ? DEFAULT_OFFSET : offsetParam;
-        if (limit < 1 || limit > 200 || offset < 0) {
-            return ResponseEntity.badRequest().body(invalidRequest());
-        }
-        int total = store.getProfessors().size();
-        List<ProfessorItem> items = store.getProfessors().stream()
-            .skip(offset)
-            .limit(limit)
-            .map(ProfessorsController::toItem)
-            .toList();
-        return ResponseEntity.ok(new ItemsResponse<>(items, new ItemsResponse.Page(limit, offset, total)));
-    }
-
-    private static ProfessorItem toItem(SeedData.Professor professor) {
-        return new ProfessorItem(
-            professor.id(),
-            professor.name(),
-            professor.departmentId(),
-            professor.departmentName()
-        );
-    }
-
-    public record ProfessorItem(
-        int id,
-        String name,
-        int departmentId,
-        String departmentName
-    ) {
-    }
-
-    private static ErrorResponse invalidRequest() {
-        return new ErrorResponse(new ErrorResponse.Error(500, "잘못된 요청 파라미터", Map.of()));
+        Page<ProfessorItem> page = professorService.findProfessors(limit, offset);
+        return ResponseEntity.ok(new ItemsResponse<>(
+            page.getContent(),
+            new ItemsResponse.Page(limit, offset, (int) page.getTotalElements())
+        ));
     }
 }

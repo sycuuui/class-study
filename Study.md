@@ -711,6 +711,29 @@ assertEquals(602, result.errorCode);   // overlaps: 540<660 && 600<630 = true
 
 **검증 결과**: 부팅 성공, `QueryCreationException` 없음 → 3개 파생 쿼리 전부 SQL 변환 확인. **→ D2 완료.**
 
+> 참고: 이후 패키지 구조를 **도메인 중심**으로 재편(`domain/{course,department,professor,student,enrollment}/{entity,repository,api}` + `global/`). 브랜치 `feat/DBseed`.
+
+---
+
+## D3. 시드 데이터를 DB로 (DbSeeder) ✅
+
+**만든 파일**: `data/DbSeeder.java` (`@Component @Order(2) ApplicationRunner`).
+인메모리로 생성된 record(`store`)를 읽어 → 엔티티 변환 → DB 저장. `SeedDataGenerator`엔 `@Order(1)` 부여로 순서 보장.
+
+### 배운 핵심 3가지
+1. **"숫자 id → 엔티티 객체" 매핑** (`Map<Integer, Department> deptMap`) ★
+   - record는 `departmentId`(숫자), 엔티티는 `Department`(객체 참조). DB가 준 새 IDENTITY id는 옛 record id와 **다르므로**, `save` 결과를 맵에 담아(`deptMap.put(r.id(), saved)`) 자식에서 꺼내 연결. **마이그레이션의 심장.**
+2. **저장 순서 = FK 위상정렬**: Department → Professor/Student → Course. 부모 먼저 저장해야 자식이 참조 가능. `@Order(1→2)`도 같은 원리(in-memory 시드 후 DB 시드).
+3. **파일 모드 중복 시드 함정**: 파일 모드는 재시작해도 데이터 잔존 → 매 부팅 시드하면 누적. **`if (count() > 0) return;` 가드**로 방어. (재부팅 시 "skipped" 확인)
+
+### 그 외 설계·성능
+- **버린 필드**: `Course.enrolled`(→ COUNT로 계산), `Student.enrolledCredits`(죽은 필드). enrollment 테이블은 **비워둠**(실제 신청은 D5 API로).
+- **schedule 파싱**: `"월 09:00-10:30"` → `ScheduleDay.MONDAY` + `540`/`630`분. `split(" ")`/`split("-")`/`hour*60+min`.
+- **한 트랜잭션**: `run()`에 `@Transactional` → 전체 1커밋. 학생 1만은 `saveAll`.
+- **IDENTITY 배치 한계**: `GenerationType.IDENTITY`는 JDBC 배치 insert 비활성(insert마다 생성 id 필요). 그런데도 842ms인 건 H2가 **인프로세스**라 왕복이 싼 덕. 원격 DB·대량이면 SEQUENCE 전략/JdbcTemplate 배치로.
+
+**검증 결과**: 부팅 시 `db seed departments=12 / professors=100 / students=10000 / courses=500`, `total ms=842`. 재부팅 시 `db seed skipped (already seeded)`. **→ D3 완료.**
+
 ---
 
 # 🛠️ Git 실전 트러블슈팅 — 실수로 올라간 파일 제거 & push 오류
@@ -758,3 +781,69 @@ push 실패는 원인을 **분리 진단**하는 게 핵심. 아래 3개를 순�
 3. 설정 파일은 **템플릿(`application.yml.example`)만 커밋**, 실제 값은 로컬/환경변수(`.env`)로 관리
 
 **핵심 한 줄 요약**: `.gitignore` + 이미 추적된 파일 = **`git rm --cached` 필수** / push 안 되면 = **인증·fast-forward·tracking** 분리 진단.
+
+---
+
+## D4. Service 계층 + DTO + Bean Validation (students 엔드포인트 템플릿)
+
+**목표**: InMemoryStore 직접 조회 → `Controller → Service → Repository` 레이어 분리 + 응답 DTO + 선언형 검증.
+
+### 만든 것
+- `domain/student/service/StudentService` — `@Service`, `@Transactional(readOnly=true)`
+- `domain/student/dto/response/StudentItem` — 응답 DTO(record) + `from(Student)` 팩토리
+- `domain/student/dto/response/ItemResponse` — 목록 응답 래퍼 + `of(Page<StudentItem>)` 팩토리
+- `global/api/ApiExceptionHandler` — `@RestControllerAdvice`로 검증 실패 → 400
+- `StudentsController` — `@Validated` + `@Min/@Max`로 파라미터 검증
+
+### 핵심 개념 3가지
+1. **`@Transactional(readOnly=true)` 안에서 DTO 변환** — `department`가 `@ManyToOne(LAZY)`라, 트랜잭션이 닫힌 뒤 `getDepartment().getName()`을 만지면 `LazyInitializationException`. 그래서 **Service가 DTO 변환까지 끝내고** Controller엔 이미 변환된 DTO만 전달. (엔티티를 컨트롤러로 넘기지 않는다)
+2. **`Page.map()`** — `findAll(pageable).map(StudentItem::from)` 한 줄. 원본을 바꾸는 게 아니라 **새 Page를 리턴**(total/pageNum 등 메타 유지) → 리턴값을 그대로 반환해야 함.
+3. **선언형 검증** — 수동 `if (limit>200)` 대신 `@Min/@Max`. `@Validated`(클래스)가 파라미터 제약을 활성화하고, 위반 시 `ConstraintViolationException` → 핸들러가 400.
+
+### 실수 & 교훈
+- 람다와 메서드참조 혼용: `student -> StudentItem::from(student)` ❌ → `StudentItem::from` (택1)
+- `Page.map()` 결과를 버리고 `return null` ❌ → 리턴값을 그대로 반환
+- 팩토리 `of()`에서 `total`/`totalPages`를 **어디선가 온 변수**로 착각 → 실은 **파라미터 `Page`에서 꺼냄**: `getContent()/getTotalElements()/getTotalPages()/getNumber()`
+- `StudentRepository.findAll(Pageable)` 오버라이드는 **JpaRepository가 이미 제공**해서 중복(있어도 무해)
+
+### 계층 분리 원칙
+- `Page`(도메인/영속 언어)는 Service까지. HTTP 표현(`ItemResponse`)은 Controller에서 입힘.
+- 향후 courses/professors는 같은 패턴 복제. `ItemResponse`가 지금은 학생 전용(`List<StudentItem>`)이라, 복제 시 제네릭(`ItemsResponse<T>`) 통합 여부 결정 예정.
+
+### 검증 (실제 API)
+- `GET /students?limit=3&offset=0` → 학생 3명, `pageNum=0`, `total=10000`, `totalPages=3334` ✅
+- `GET /students?limit=3&offset=3` → 다음 페이지(id 4~6), `pageNum=1` ✅
+- `GET /students?limit=999` → **400** `{"error":{"code":400,"message":"잘못된 요청 파라미터","details":{"detail":"list.limit: 200 이하여야 합니다"}}}` ✅
+
+---
+
+## D4-b. courses / professors 엔드포인트 마이그레이션 (students 패턴 확장)
+
+**목표**: InMemoryStore 직접 조회하던 `/courses`, `/professors`를 `Controller→Service→Repository` + DTO + 검증으로 통일.
+
+### 결정 사항
+- **응답 래퍼**: 도메인별 전용 대신 **제네릭 `global.ItemsResponse<T>`(items, page{limit,offset,total}) 재사용** → 래퍼 중복 제거. (student의 전용 ItemResponse는 추후 여기로 정렬 예정)
+- **enrolled(수강인원)**: enrollment 미시드라 지금은 CourseItem에서 **제외**, D5에서 집계로 추가.
+
+### 새로 배운 핵심: N+1 문제와 @EntityGraph ★
+- **문제**: CourseItem은 `departmentName`+`professorName`(둘 다 LAZY)이 필요. 목록 50개를 DTO로 변환하면, 각 행마다 department/professor를 조회 → 최대 **1 + 50 + 50 쿼리**(N+1).
+- **해결**: 리포지토리 메서드에 `@EntityGraph(attributePaths = {"department","professor"})` → Hibernate가 **fetch join 한 방**으로 연관까지 로딩. 로그에서 `course ... left join department ... join professor` 확인.
+- **왜 페이징과 함께 써도 안전한가**: department/professor는 **to-one**. to-**many**(컬렉션) fetch join + 페이징이면 `HHH000104`(메모리 페이징) 경고가 뜨지만, to-one은 행 수가 안 불어나 안전.
+- **대안 비교**: `@Query`에 `join fetch`를 직접 쓸 수도 있지만, `@EntityGraph`가 기존 파생 쿼리(`findByDepartment_Id`)에 얹기 쉽고 선언적.
+
+### 필터 처리
+- `/courses?departmentId=` → 파생 쿼리 `findByDepartment_Id(Long, Pageable)`. Service에서 `departmentId == null ? findAll : findByDepartment_Id`로 분기.
+
+### DTO 포맷팅
+- DB엔 `schedule` 문자열이 없음(`scheduleDay(enum) + start/endMinute(int)`) → CourseItem에서 `"월 09:00-10:30"`로 조립(`day.getDescription() + toHhmm(min)`), `toHhmm = String.format("%02d:%02d", m/60, m%60)`.
+
+### 검증 (실제 API)
+- `GET /courses?limit=2` → schedule="화 10:30-12:00", total=500 ✅
+- `GET /courses?departmentId=3&limit=2` → 전자공학과만, total=40 ✅
+- `GET /courses?limit=0` → 400 ("1 이상이어야 합니다") ✅
+- `GET /professors?limit=2&offset=2` → total=100, 페이징 ✅
+- SQL 로그에서 fetch join 확인 → N+1 없음 ✅
+
+### 남은 InMemoryStore 의존 (D5에서 처리)
+- `/timetable?studentId` — 학생 수강내역 → enrollment 조회 필요
+- `/enrollments` POST/DELETE — 수강신청/취소 = 동시성 제어(비관적 락) 핵심
