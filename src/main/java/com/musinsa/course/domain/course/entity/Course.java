@@ -58,4 +58,13 @@ public class Course extends BaseTimeEntity {
         this.department = department;
         this.professor = professor;
     }
+
+    /** 표시용 스케줄 문자열. 예: "월 09:00-10:30" */
+    public String getScheduleText() {
+        return scheduleDay.getDescription() + " " + toHhmm(scheduleStartMinute) + "-" + toHhmm(scheduleEndMinute);
+    }
+
+    private static String toHhmm(int minuteOfDay) {
+        return String.format("%02d:%02d", minuteOfDay / 60, minuteOfDay % 60);
+    }
 }

@@ -14,7 +14,10 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     boolean existsByStudentAndCourseAndDeletedAtIsNull(Student student, Course course);
     Optional<Enrollment> findByStudentAndCourseAndDeletedAtIsNull(Student student, Course course);
 
-    /** 시간표 충돌 검사에서 각 enrollment.getCourse()를 만지므로 course를 함께 로딩 → 루프 N+1 방지. */
-    @EntityGraph(attributePaths = {"course"})
+    /**
+     * 학생의 수강 내역 조회. 시간표 충돌 검사·시간표 조회에서 course와 그 professor까지 만지므로
+     * 중첩 경로로 함께 로딩 → N+1 방지.
+     */
+    @EntityGraph(attributePaths = {"course", "course.professor"})
     List<Enrollment> findByStudentAndDeletedAtIsNull(Student student);
 }

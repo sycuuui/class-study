@@ -1,7 +1,6 @@
 package com.musinsa.course.domain.course.dto.response;
 
 import com.musinsa.course.domain.course.entity.Course;
-import com.musinsa.course.domain.course.enumate.ScheduleDay;
 
 /**
  * 강좌 목록 응답 DTO.
@@ -25,20 +24,11 @@ public record CourseItem(
             course.getName(),
             course.getCredits(),
             course.getCapacity(),
-            formatSchedule(course.getScheduleDay(), course.getScheduleStartMinute(), course.getScheduleEndMinute()),
+            course.getScheduleText(),
             course.getDepartment().getId(),       // ← LAZY 로딩
             course.getDepartment().getName(),
             course.getProfessor().getId(),         // ← LAZY 로딩
             course.getProfessor().getName()
         );
-    }
-
-    /** enum + 분 단위(int) → "월 09:00-10:30" 형태의 표시용 문자열로 조립 */
-    private static String formatSchedule(ScheduleDay day, int startMinute, int endMinute) {
-        return day.getDescription() + " " + toHhmm(startMinute) + "-" + toHhmm(endMinute);
-    }
-
-    private static String toHhmm(int minuteOfDay) {
-        return String.format("%02d:%02d", minuteOfDay / 60, minuteOfDay % 60);
     }
 }
