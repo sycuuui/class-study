@@ -1,69 +1,40 @@
 package com.musinsa.course.domain.enrollment.api;
 
-import com.musinsa.course.global.api.response.ErrorResponse;
-import com.musinsa.course.data.InMemoryStore;
-import com.musinsa.course.data.InMemoryStore.EnrollmentResult;
-import java.util.Map;
+import com.musinsa.course.domain.enrollment.service.EnrollmentService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/enrollments")
+@RequiredArgsConstructor
 public class EnrollmentsController {
-    private final InMemoryStore store;
 
-    private final String ENROLLED = "enrolled";
+    private final EnrollmentService enrollmentService;
 
-    public EnrollmentsController(InMemoryStore store) {
-        this.store = store;
+    /** 수강신청. 성공 시 201. (정원초과·중복 등 실패의 세밀한 HTTP 매핑은 D6에서 @RestControllerAdvice로) */
+    @PostMapping
+    public ResponseEntity<EnrollmentResponse> enroll(@RequestBody EnrollmentRequest request) {
+        enrollmentService.requestEnrollment(request.studentId(), request.courseId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(new EnrollmentResponse(request.studentId(), request.courseId(), "ENROLLED"));
     }
 
-    @PostMapping("/enrollments")
-    public ResponseEntity<?> enroll(@RequestBody EnrollmentRequest request) {
-        if (!store.isReady()) {
-            return ResponseEntity.status(503).body(serviceUnavailable());
-        }
-        EnrollmentResult result = store.enroll(request.studentId(), request.courseId());
-        if (result.success) {
-            return ResponseEntity.status(201).body(new EnrollmentResponse(
-                result.enrollmentId,
-                result.studentId,
-                result.courseId,
-                    ENROLLED
-            ));
-        }
-        return ResponseEntity.status(result.httpStatus).body(errorBody(result));
+    /** 수강취소. 성공 시 204. */
+    @DeleteMapping
+    public ResponseEntity<Void> cancel(@RequestBody EnrollmentRequest request) {
+        enrollmentService.cancel(request.studentId(), request.courseId());
+        return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/enrollments")
-    public ResponseEntity<?> cancel(@RequestBody EnrollmentRequest request) {
-        if (!store.isReady()) {
-            return ResponseEntity.status(503).body(serviceUnavailable());
-        }
-        EnrollmentResult result = store.cancel(request.studentId(), request.courseId());
-        if (result.canceled) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.status(result.httpStatus).body(errorBody(result));
+    public record EnrollmentRequest(long studentId, long courseId) {
     }
 
-    private static ErrorResponse errorBody(EnrollmentResult result) {
-        Map<String, Object> details = Map.of(
-            "studentId", result.studentId,
-            "courseId", result.courseId
-        );
-        return new ErrorResponse(new ErrorResponse.Error(result.errorCode, result.message, details));
-    }
-
-    private static ErrorResponse serviceUnavailable() {
-        return new ErrorResponse(new ErrorResponse.Error(700, "서비스 준비 중", Map.of()));
-    }
-
-    public record EnrollmentRequest(int studentId, int courseId) {
-    }
-
-    public record EnrollmentResponse(long enrollmentId, int studentId, int courseId, String status) {
+    public record EnrollmentResponse(long studentId, long courseId, String status) {
     }
 }

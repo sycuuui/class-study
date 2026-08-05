@@ -22,7 +22,7 @@ public class StudentService {
      */
     @Transactional(readOnly = true)
     public Page<StudentItem> findStudents(int limit, int offset) {
-        return studentRepository.findAll(PageRequest.of(offset/limit,limit))
+        return studentRepository.findByDeletedAtIsNull(PageRequest.of(offset/limit,limit))
                         .map(StudentItem::from);
     }
 }

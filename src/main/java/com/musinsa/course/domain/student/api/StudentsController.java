@@ -5,6 +5,7 @@ import com.musinsa.course.domain.student.dto.response.StudentItem;
 import com.musinsa.course.domain.student.service.StudentService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -14,13 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Validated   // 메서드 파라미터의 @Min/@Max 제약을 활성화 (위반 시 ConstraintViolationException → 400)
+@RequiredArgsConstructor
 public class StudentsController {
 
     private final StudentService studentService;
-
-    public StudentsController(StudentService studentService) {
-        this.studentService = studentService;
-    }
 
     @GetMapping("/students")
     public ResponseEntity<?> list(
