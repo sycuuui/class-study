@@ -6,18 +6,17 @@ import com.musinsa.course.data.InMemoryStore.TimetableResult;
 import com.musinsa.course.data.SeedData;
 import java.util.List;
 import java.util.Map;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequiredArgsConstructor
 public class TimetableController {
     private final InMemoryStore store;
-
-    public TimetableController(InMemoryStore store) {
-        this.store = store;
-    }
 
     @GetMapping("/timetable")
     public ResponseEntity<?> get(@RequestParam(name = "studentId") int studentId) {

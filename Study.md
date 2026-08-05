@@ -847,3 +847,50 @@ push 실패는 원인을 **분리 진단**하는 게 핵심. 아래 3개를 순�
 ### 남은 InMemoryStore 의존 (D5에서 처리)
 - `/timetable?studentId` — 학생 수강내역 → enrollment 조회 필요
 - `/enrollments` POST/DELETE — 수강신청/취소 = 동시성 제어(비관적 락) 핵심
+
+---
+
+## D5. 수강신청/취소 + 동시성 제어(비관적 락) ★ 로드맵 핵심
+
+**목표**: InMemoryStore의 enroll/cancel을 DB로 이관하되, **정원 초과를 동시성 환경에서 막기.**
+
+### 비즈니스 규칙 (enroll, 순서대로)
+학생 존재 → 강좌 존재 → 중복신청 → **정원 초과** → 시간표 충돌 → 학점 초과 → 저장.
+
+### 동시성 문제 = Race Condition
+"인원 세기(읽기) → 판단 → 저장(쓰기)"가 원자적이지 않아, 읽기와 쓰기 사이에 다른 요청이 끼어들면 정원 1명 강좌에 2명이 등록됨(Lost Update).
+- 단일 서버여도 톰캣은 요청마다 스레드+커넥션+트랜잭션이 별개라 자바 `synchronized`로는 못 막음 → **DB 락 필요**.
+
+### 해결: 비관적 락(Pessimistic Write)
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE)   // ← READ(공유락)면 못 막음! WRITE(배타락)
+Optional<Course> findCourseByIdAndDeletedAtIsNull(Long id);
+```
+- 실행 시 `select ... for update`. **course 행을 잠가** 그 강좌로의 신청을 **직렬화**.
+- "자식(enrollment 개수)의 불변식을 지키려 대표(course 행)를 잠근다"는 표준 패턴.
+- **service에서 쓰는 법 = @Transactional 안에서 이 메서드를 호출**하는 것뿐. 락 수명 = 트랜잭션 수명이라 enroll 전체가 하나의 @Transactional이어야 함.
+- 낙관적 락(@Version)은 오픈 순간 재시도 폭풍(retry storm) → 고경합엔 비관적이 유리.
+
+### 이번에 겪은 버그들 (실전 교훈)
+1. **`@Lock(PESSIMISTIC_READ)`** 로 시작 → 공유락이라 동시 신청 통과. **WRITE로 수정**해야 직렬화.
+2. **Optional 미해제**: `existStudent(Optional)`로 검사만 하고 알맹이를 안 꺼내 downstream 전부 타입 에러. → **`orElseThrow`로 경계에서 즉시 언랩**하면 한 번에 해결.
+3. **시간표 충돌 로직**: 요일 검사 누락 + 겹침 조건을 OR로 → 오판. 정답: `같은 요일 && A.start < B.end && B.start < A.end`.
+4. **파생 쿼리 이름**: `findAllAndDeletedAtIsNull` → `By`가 없어 부팅 실패(`No property 'findAll'`). **`findByDeletedAtIsNull`**. (부트타임 검증의 장점: 앱 시작 시 바로 터짐)
+5. **@EntityGraph 문법**: `@EntityGraph("course")`는 attributePaths가 아니라 **named graph 이름**으로 해석돼 `is not dynamic` 런타임 에러. 동적 로딩은 **`@EntityGraph(attributePaths = {"course"})`**. + 엉뚱한 엔티티(Student엔 course 없음)에 붙이면 이중 오류.
+
+### cancel 설계
+- **하드 삭제**(`delete`) 선택. 이유: Enrollment에 `UNIQUE(student_id, course_id)`가 있어 **소프트삭제하면 재신청 시 중복키 위반**. 하드삭제면 재신청 가능. (이력 보존 필요 시 unique 제약에 deleted_at 포함 재설계 — 추후)
+- 취소는 정원을 늘리는 방향이라 **락 불필요**.
+
+### 책임 분리
+- 검사 로직을 도메인별 `@Component` validator로 분리(CourseValidator.checkCapacity / StudentValidator.checkMaxCredits / EnrollmentValidator.checkCourseTime).
+- 교훈: 미사용 의존성 주입 제거, boolean 하나 받아 throw만 하는 얇은 validator는 과할 수 있음(서비스 if로 충분).
+
+### 검증 (실제 부팅 + 동시성 테스트) ★
+- 정상 신청 201 / 중복 재신청 실패 / 취소 204 / 취소 후 재신청 201.
+- **동시성**: 정원 21인 course 11에 **학생 60명 동시 POST** → **정확히 201이 21건, 500이 39건**. 이후 61번째 신청도 거절(500). 취소 성공이 **정확히 21건** → DB에 초과 삽입 0건 확인. **비관적 락 동작 입증.**
+
+### 남은 것 (D6+)
+- 실패 예외(RuntimeException)가 지금은 전부 500 → **ErrorCode enum + @RestControllerAdvice로 409(정원초과)·404 등 매핑**.
+- 오타 정리(`exsits`), 요청 바디 Bean Validation.
+- `/timetable` 엔드포인트 DB 이관.

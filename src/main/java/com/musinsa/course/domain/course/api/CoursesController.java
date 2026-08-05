@@ -5,6 +5,7 @@ import com.musinsa.course.domain.course.service.CourseService;
 import com.musinsa.course.global.api.response.ItemsResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -14,13 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Validated
+@RequiredArgsConstructor
 public class CoursesController {
 
     private final CourseService courseService;
-
-    public CoursesController(CourseService courseService) {
-        this.courseService = courseService;
-    }
 
     @GetMapping("/courses")
     public ResponseEntity<?> list(
