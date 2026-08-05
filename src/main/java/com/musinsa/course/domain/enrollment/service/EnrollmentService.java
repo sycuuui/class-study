@@ -41,7 +41,7 @@ public class EnrollmentService {
         //중복 신청 여부
         boolean exsits = enrollmentRepository.existsByStudentAndCourseAndDeletedAtIsNull(student,course);
         enrollmentValidator.validateNotDuplicated(exsits);
-        //정원 초과
+        //정원 초과 확인(이때 비관적 락 걸기)
         long countCurrent = enrollmentRepository.countByCourseAndDeletedAtIsNull(course);
         courseValidator.checkCapacity(course, countCurrent);
 
