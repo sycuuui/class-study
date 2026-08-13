@@ -33,7 +33,7 @@ public class EnrollmentService {
         //학생 존재
         Student student = studentRepository.findByIdAndDeletedAtIsNull(studentId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.STUDENT_NOT_FOUND));
-        //강좌 존재
+        //강좌 존재(이때 비관적 락 걸기)
         Course course = courseRepository.findCourseByIdAndDeletedAtIsNull(courseId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 
@@ -42,7 +42,7 @@ public class EnrollmentService {
         //중복 신청 여부
         boolean exsits = enrollmentRepository.existsByStudentAndCourseAndDeletedAtIsNull(student,course);
         enrollmentValidator.validateNotDuplicated(exsits);
-        //정원 초과 확인(이때 비관적 락 걸기)
+        //정원 초과 확인
         long countCurrent = enrollmentRepository.countByCourseAndDeletedAtIsNull(course);
         courseValidator.checkCapacity(course, countCurrent);
 
