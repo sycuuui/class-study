@@ -4,7 +4,7 @@ import com.musinsa.course.domain.student.entity.Student;
 import lombok.Builder;
 
 /**
- * 학생 목록 응답 DTO. (enrolledCredits 제거 — 엔티티에 없음, D5에서 enrollment로 계산 예정)
+ * 학생 목록 응답 DTO. (신청 학점은 필요 시 enrollment 집계로 계산 — 엔티티에 저장하지 않음)
  * 엔티티를 그대로 노출하지 않기 위한 외부 표현.
  */
 @Builder
