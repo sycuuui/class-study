@@ -27,6 +27,7 @@ dependencies {
 
     // Swagger UI - spring doc
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'
+    //http://localhost:8080/swagger-ui/index.html
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
