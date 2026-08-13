@@ -894,3 +894,32 @@ Optional<Course> findCourseByIdAndDeletedAtIsNull(Long id);
 - 실패 예외(RuntimeException)가 지금은 전부 500 → **ErrorCode enum + @RestControllerAdvice로 409(정원초과)·404 등 매핑**.
 - 오타 정리(`exsits`), 요청 바디 Bean Validation.
 - `/timetable` 엔드포인트 DB 이관.
+
+---
+
+## D8. 테스트 (동시성·규칙·응답구조 회귀 방지)
+
+**목표**: 지금까지 curl로 수동 검증한 것을 자동 테스트로 고정.
+
+### 테스트 3계층
+- 단위(순수 JUnit) / 슬라이스(@DataJpaTest) / 통합(@SpringBootTest). 동시성·트랜잭션이 필요한 건 통합.
+
+### 인프라 세팅
+- `src/test/resources/application.yml`: **인메모리 H2**(`jdbc:h2:mem`, `ddl-auto: create-drop`)로 분리 → 파일 DB 오염 방지. `LOCK_TIMEOUT=10000`으로 비관적 락 경합 시 대기(즉시 실패 방지).
+- `SeedDataGenerator`/`DbSeeder`에 **`@Profile("!test")`** → 테스트에선 1만 시드 안 돎. 테스트는 필요한 데이터만 직접 준비.
+- 공통 픽스처는 `EnrollmentTestSupport`(@SpringBootTest + @ActiveProfiles("test"))에 모아 상속.
+
+### ★ 핵심: 동시성 테스트에 @Transactional을 붙이면 안 된다
+- 테스트 메서드에 `@Transactional`을 붙이면 setup 데이터가 커밋 안 돼 **다른 스레드(별도 트랜잭션)가 못 봄**, 비관적 락도 커밋 기준이라 재현 불가.
+- 그래서 테스트는 비트랜잭션으로 두고, 정리는 `@AfterEach`에서 FK 역순 `deleteAll`.
+- `ExecutorService` + `CountDownLatch(start)`로 스레드를 동시 출발 → 각자 `requestEnrollment` 호출(각자 트랜잭션) → `성공==정원`, `countByCourse==정원` 검증.
+
+### 작성한 테스트 (신규 13 + 기존 3 = 16, 전부 통과)
+- `EnrollmentConcurrencyTest`: 정원 20 강좌에 60명 동시신청 → 정확히 20 성공.
+- `EnrollmentServiceTest`: STUDENT/COURSE_NOT_FOUND, DUPLICATE, CAPACITY, SCHEDULE_CONFLICT, CREDIT_LIMIT, 취소 후 재신청, 취소 ENROLLMENT_NOT_FOUND → 각 ErrorCode 검증.
+- `EnrollmentApiTest`(MockMvc): 신청 201/code1001, 없는학생 404/5000, 취소 200/1000, 파라미터검증 400/2002.
+- 기존 `data/*Test`(InMemoryStore 대상)는 보존.
+
+### 교훈
+- `ApplicationException`의 ErrorCode 검증: `assertThatThrownBy(...).extracting(e -> ((ApplicationException)e).getErrorCode()).isEqualTo(...)`.
+- H2도 `SELECT FOR UPDATE` 지원 → 통합 테스트로 락 동작을 실제 재현 가능.

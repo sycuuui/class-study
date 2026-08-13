@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Random;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 @Component
 @Order(1)
+@Profile("!test")   // 테스트 프로파일에서는 대량 시드를 돌리지 않는다 (테스트는 필요한 데이터만 직접 준비)
 public class SeedDataGenerator implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(SeedDataGenerator.class);
     private static final int DEPARTMENT_MIN = 10;
