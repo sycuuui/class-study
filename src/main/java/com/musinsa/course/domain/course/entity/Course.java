@@ -5,14 +5,17 @@ import com.musinsa.course.domain.professor.entity.Professor;
 import com.musinsa.course.domain.course.enumate.ScheduleDay;
 import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
 
 @Entity
 @Table(name = "course")
 @Getter
 @SQLDelete(sql = "UPDATE course SET deleted_at = NOW() where id = ?")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Course extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,8 +47,6 @@ public class Course extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "professor_id", nullable = false)
     private Professor professor;
-
-    protected Course() {}
 
     @Builder
     public Course(String name, int credits, int capacity,

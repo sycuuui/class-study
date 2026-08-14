@@ -4,9 +4,14 @@ import com.musinsa.course.domain.course.entity.Course;
 import com.musinsa.course.domain.student.entity.Student;
 import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
+import org.springframework.data.annotation.CreatedDate;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -18,7 +23,8 @@ import org.hibernate.annotations.SQLDelete;
                 )
         }
 )
-public class Enrollment extends BaseTimeEntity {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Enrollment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,8 +36,6 @@ public class Enrollment extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
-
-    protected Enrollment() {}
 
     @Builder
     public Enrollment(Student student, Course course) {
