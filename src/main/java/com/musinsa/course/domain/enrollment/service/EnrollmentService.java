@@ -40,14 +40,14 @@ public class EnrollmentService {
         //강좌 기간 확인(추후 필요 ex. 년도+학기)(이건 @Schduler로 일정 시간이 되면 학기별로 강좌 및 학생 기록 닫기)
 
         //중복 신청 여부
-        boolean exsits = enrollmentRepository.existsByStudentAndCourseAndDeletedAtIsNull(student,course);
+        boolean exsits = enrollmentRepository.existsByStudentAndCourse(student,course);
         enrollmentValidator.validateNotDuplicated(exsits);
         //정원 초과 확인
-        long countCurrent = enrollmentRepository.countByCourseAndDeletedAtIsNull(course);
+        long countCurrent = enrollmentRepository.countByCourse(course);
         courseValidator.checkCapacity(course, countCurrent);
 
         //학생의 현재 수강 신청 리스트 가져오기(+추후 강좌 기간 도입 시, 기간 설정 => 탐색 수강 신청 데이터 줄어듬)
-        List<Enrollment> enrollments = enrollmentRepository.findByStudentAndDeletedAtIsNull(student);
+        List<Enrollment> enrollments = enrollmentRepository.findByStudent(student);
 
         int currentCredits=0;
         for(Enrollment enrollment: enrollments){
@@ -79,7 +79,7 @@ public class EnrollmentService {
         //강좌 기간 확인(추후 필요 ex. 년도+학기)(이건 @Schduler로 일정 시간이 되면 학기별로 강좌 및 학생 기록 닫기)
 
         //수강 신청 존재
-        Enrollment enrollment = enrollmentRepository.findByStudentAndCourseAndDeletedAtIsNull(student,course)
+        Enrollment enrollment = enrollmentRepository.findByStudentAndCourse(student,course)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.ENROLLMENT_NOT_FOUND));
 
         enrollmentRepository.delete(enrollment);

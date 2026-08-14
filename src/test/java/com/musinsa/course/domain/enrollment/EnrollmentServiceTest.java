@@ -120,7 +120,7 @@ class EnrollmentServiceTest extends EnrollmentTestSupport {
         enrollmentService.requestEnrollment(student.getId(), course.getId());
         enrollmentService.cancel(student.getId(), course.getId());
 
-        assertThat(enrollmentRepository.countByCourseAndDeletedAtIsNull(course)).isZero();
+        assertThat(enrollmentRepository.countByCourse(course)).isZero();
         // 취소 후 재신청은 예외 없이 성공
         assertThatCode(() -> enrollmentService.requestEnrollment(student.getId(), course.getId()))
             .doesNotThrowAnyException();
