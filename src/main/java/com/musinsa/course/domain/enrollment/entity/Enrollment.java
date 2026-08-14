@@ -6,6 +6,7 @@ import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
+import org.hibernate.annotations.SQLDelete;
 
 @Entity
 @Getter

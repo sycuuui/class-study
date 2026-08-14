@@ -7,10 +7,12 @@ import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
+import org.hibernate.annotations.SQLDelete;
 
 @Entity
 @Table(name = "course")
 @Getter
+@SQLDelete(sql = "UPDATE course SET deleted_at = NOW() where id = ?")
 public class Course extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

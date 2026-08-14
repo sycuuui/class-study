@@ -5,10 +5,12 @@ import com.musinsa.course.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
+import org.hibernate.annotations.SQLDelete;
 
 @Entity
 @Table(name = "professor")
 @Getter
+@SQLDelete(sql = "UPDATE professor SET deleted_at = NOW() where id = ?")
 public class Professor extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
