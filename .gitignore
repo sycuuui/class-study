@@ -47,3 +47,7 @@ bin/
 
 **/src/main/resources/application.yml
 **/src/test/resources/application.yml
+
+**/docs/CLAUDE.md
+**/docs/LOG.md
+**/docs/PLAN.md
