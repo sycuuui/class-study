@@ -21,6 +21,8 @@ public enum ErrorCode {
     FORBIDDEN_EXCEPTION(HttpStatus.FORBIDDEN, 2005, "인가되지 않는 요청입니다."),
     ALREADY_EXIST_EXCEPTION(HttpStatus.BAD_REQUEST, 2006, "이미 존재하는 리소스입니다."),
     INVALID_SORT_EXCEPTION(HttpStatus.BAD_REQUEST, 2007, "올바르지 않은 정렬 값입니다."),
+    PESSIMISTIC_LOCKING_FAILURE_EXCEPTION(HttpStatus.CONFLICT, 2008, "락 타임 아웃으로 오류가 발생했습니다."),
+    DATA_INTEGRITY_VIOLATION_EXCEPTION(HttpStatus.CONFLICT, 2009, "학생과 강좌가 이미 존재합니다."),
 
     // 3000: Auth Error
     WRONG_TOKEN_EXCEPTION(HttpStatus.UNAUTHORIZED, 3002, "유효하지 않은 토큰입니다."),
