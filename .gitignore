@@ -51,3 +51,8 @@ bin/
 **/docs/CLAUDE.md
 **/docs/PLAN.md
 **/docs/LOG.md
+
+**/docker-compose.yml
+
+.idea
+

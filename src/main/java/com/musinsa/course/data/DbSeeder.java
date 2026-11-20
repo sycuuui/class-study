@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 인메모리로 생성된 시드 데이터(store)를 H2 DB로 옮긴다.
+ * 인메모리로 생성된 시드 데이터(store)를 DB로 옮긴다.
  * SeedDataGenerator(@Order(1))가 store를 채운 뒤 실행(@Order(2)).
  */
 @Component
