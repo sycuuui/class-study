@@ -16,7 +16,7 @@ public class OpenApiConfig {
     public OpenAPI courseOpenAPI() {
         return new OpenAPI().info(new Info()
             .title("수강신청 API")
-            .description("H2 + JPA 기반 수강신청 시스템 API 문서")
+            .description("MySQL + JPA 기반 수강신청 시스템 API 문서")
             .version("v1"));
     }
 }
