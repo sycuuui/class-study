@@ -30,7 +30,7 @@ public class TimetableService {
         Student student = studentRepository.findByIdAndDeletedAtIsNull(studentId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.STUDENT_NOT_FOUND));
 
-        List<Enrollment> enrollments = enrollmentRepository.findByStudentAndDeletedAtIsNull(student);
+        List<Enrollment> enrollments = enrollmentRepository.findByStudent(student);
 
         List<TimetableItem> items = enrollments.stream()
                 .map(enrollment -> TimetableItem.from(enrollment.getCourse()))

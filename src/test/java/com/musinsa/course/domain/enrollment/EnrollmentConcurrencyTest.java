@@ -69,7 +69,7 @@ class EnrollmentConcurrencyTest extends EnrollmentTestSupport {
         assertThat(finished).isTrue();
         assertThat(success.get()).isEqualTo(capacity);
         assertThat(failure.get()).isEqualTo(studentCount - capacity);
-        assertThat(enrollmentRepository.countByCourseAndDeletedAtIsNull(course)).isEqualTo(capacity);
+        assertThat(enrollmentRepository.countByCourse(course)).isEqualTo(capacity);
     }
 
     @Test

@@ -4,7 +4,7 @@ import com.musinsa.course.domain.course.entity.Course;
 
 /**
  * 강좌 목록 응답 DTO.
- * (enrolled(현재 수강인원)는 D5에서 enrollment 집계로 추가 예정 — 지금은 제외)
+ * (enrolled(현재 수강인원)는 현재 미포함 — 필요 시 enrollment 집계로 추가)
  * 주의: department/professor는 @ManyToOne(LAZY)라 트랜잭션 안에서 from()을 호출해야 함.
  */
 public record CourseItem(
