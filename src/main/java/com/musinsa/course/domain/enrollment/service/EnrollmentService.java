@@ -43,7 +43,7 @@ public class EnrollmentService {
         boolean exsits = enrollmentRepository.existsByStudentAndCourse(student,course);
         enrollmentValidator.validateNotDuplicated(exsits);
         //정원 초과 확인
-        long countCurrent = enrollmentRepository.countByCourse(course);
+        long countCurrent = course.getEnrolled();
         courseValidator.checkCapacity(course, countCurrent);
 
         //학생의 현재 수강 신청 리스트 가져오기(+추후 강좌 기간 도입 시, 기간 설정 => 탐색 수강 신청 데이터 줄어듬)
@@ -64,6 +64,7 @@ public class EnrollmentService {
                 .course(course)
                 .student(student)
                 .build();
+        course.increaseEnrolled();
         enrollmentRepository.save(enrollment);
     }
 
@@ -82,6 +83,7 @@ public class EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findByStudentAndCourse(student,course)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.ENROLLMENT_NOT_FOUND));
 
+        course.decreaseEnrolled();
         enrollmentRepository.delete(enrollment);
     }
 }

@@ -139,4 +139,21 @@ class EnrollmentServiceTest extends EnrollmentTestSupport {
             .extracting(e -> ((ApplicationException) e).getErrorCode())
             .isEqualTo(ErrorCode.ENROLLMENT_NOT_FOUND);
     }
+
+    @Test
+    @DisplayName("신청/취소 후 Course의 enrolled와 Enrollment의 course가 같다")
+    void equalsCourseAndEnrollment() {
+        Department d = saveDepartment();
+        Professor p = saveProfessor(d);
+        Course course = saveCourse("과목", 3, 30, ScheduleDay.MONDAY, 540, 630, d, p);
+        Student student = saveStudent(18, d);
+
+        enrollmentService.requestEnrollment(student.getId(), course.getId());
+        assertThat(courseRepository.findById(course.getId()).get().getEnrolled()).isEqualTo(1);
+        assertThat(enrollmentRepository.countByCourse(course)).isEqualTo(1);
+
+        enrollmentService.cancel(student.getId(), course.getId());
+        assertThat(courseRepository.findById(course.getId()).get().getEnrolled()).isZero();
+        assertThat(enrollmentRepository.countByCourse(course)).isZero();
+    }
 }

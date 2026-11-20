@@ -48,10 +48,12 @@ public class Course extends BaseTimeEntity {
     @JoinColumn(name = "professor_id", nullable = false)
     private Professor professor;
 
+    private int enrolled;
+
     @Builder
     public Course(String name, int credits, int capacity,
                   ScheduleDay scheduleDay, int scheduleStartMinute, int scheduleEndMinute,
-                  Department department, Professor professor) {
+                  Department department, Professor professor, int enrolled) {
         this.name = name;
         this.credits = credits;
         this.capacity = capacity;
@@ -60,6 +62,7 @@ public class Course extends BaseTimeEntity {
         this.scheduleEndMinute = scheduleEndMinute;
         this.department = department;
         this.professor = professor;
+        this.enrolled = enrolled;
     }
 
     /** 표시용 스케줄 문자열. 예: "월 09:00-10:30" */
@@ -69,5 +72,12 @@ public class Course extends BaseTimeEntity {
 
     private static String toHhmm(int minuteOfDay) {
         return String.format("%02d:%02d", minuteOfDay / 60, minuteOfDay % 60);
+    }
+
+    public void increaseEnrolled(){
+        enrolled = enrolled+1;
+    }
+    public void decreaseEnrolled(){
+        enrolled = enrolled-1;
     }
 }
