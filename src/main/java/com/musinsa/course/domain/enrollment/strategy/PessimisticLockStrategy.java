@@ -1,16 +1,39 @@
 package com.musinsa.course.domain.enrollment.strategy;
 
 import com.musinsa.course.domain.course.entity.Course;
+import com.musinsa.course.domain.course.repository.CourseRepository;
+import com.musinsa.course.domain.course.service.validator.CourseValidator;
+import com.musinsa.course.global.exception.ApplicationException;
+import com.musinsa.course.global.exception.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
+@Component
+@RequiredArgsConstructor
 public class PessimisticLockStrategy implements CapacityReservationStrategy{
-
+    final CourseRepository courseRepository;
+    final CourseValidator courseValidator;
     @Override
-    public long reserveSeat() {
-        return 0;
+    public Course reserveSeat(long courseId) {
+        //강좌 존재(비관적 락 걸기)
+        Course course =  courseRepository.findCourseByIdAndDeletedAtIsNull(courseId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
+
+        //정원 초과 확인
+        long countCurrent = course.getEnrolled();
+        courseValidator.checkCapacity(course, countCurrent);
+
+        course.increaseEnrolled();
+
+        return course;
     }
 
     @Override
-    public Course releaseSeat() {
-        return null;
+    public Course releaseSeat(long courseId) {
+        Course course = courseRepository.findCourseByIdAndDeletedAtIsNull(courseId)
+                .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
+
+        course.decreaseEnrolled();
+        return course;
     }
 }
