@@ -1,12 +1,10 @@
 package com.musinsa.course.domain.enrollment.service;
 
 import com.musinsa.course.domain.course.entity.Course;
-import com.musinsa.course.domain.course.repository.CourseRepository;
-import com.musinsa.course.domain.course.service.validator.CourseValidator;
 import com.musinsa.course.domain.enrollment.entity.Enrollment;
 import com.musinsa.course.domain.enrollment.repository.EnrollmentRepository;
 import com.musinsa.course.domain.enrollment.service.validator.EnrollmentValidator;
-import com.musinsa.course.domain.enrollment.strategy.PessimisticLockStrategy;
+import com.musinsa.course.domain.enrollment.strategy.CapacityReservationStrategy;
 import com.musinsa.course.domain.student.entity.Student;
 import com.musinsa.course.domain.student.repository.StudentRepository;
 import com.musinsa.course.domain.student.service.validator.StudentValidator;
@@ -27,7 +25,7 @@ public class EnrollmentService {
     private final StudentRepository studentRepository;
     private final EnrollmentRepository enrollmentRepository;
 
-    private final PessimisticLockStrategy pessimisticLockStrategy;
+    private final CapacityReservationStrategy capacityReservationStrategy;
 
     @Transactional
     public void requestEnrollment(long studentId, long courseId){
@@ -35,7 +33,7 @@ public class EnrollmentService {
         Student student = studentRepository.findByIdAndDeletedAtIsNull(studentId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.STUDENT_NOT_FOUND));
         //강좌 존재, 정원 초과 확인하고 통과 하면 enroll+1
-        Course course = pessimisticLockStrategy.reserveSeat(courseId);
+        Course course = capacityReservationStrategy.reserveSeat(courseId);
 
         //강좌 기간 확인(추후 필요 ex. 년도+학기)(이건 @Schduler로 일정 시간이 되면 학기별로 강좌 및 학생 기록 닫기)
 
@@ -70,7 +68,7 @@ public class EnrollmentService {
         Student student = studentRepository.findByIdAndDeletedAtIsNull(studentId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.STUDENT_NOT_FOUND));
         //강좌 존재
-        Course course = pessimisticLockStrategy.releaseSeat(courseId);
+        Course course = capacityReservationStrategy.releaseSeat(courseId);
 
         //강좌 기간 확인(추후 필요 ex. 년도+학기)(이건 @Schduler로 일정 시간이 되면 학기별로 강좌 및 학생 기록 닫기)
 
