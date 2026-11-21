@@ -25,7 +25,6 @@ public class EnrollmentService {
     private final EnrollmentValidator enrollmentValidator;
 
     private final StudentRepository studentRepository;
-    private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
 
     private final PessimisticLockStrategy pessimisticLockStrategy;
