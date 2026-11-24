@@ -20,7 +20,7 @@ public class ProfessorsController {
 
     private final ProfessorService professorService;
 
-    @GetMapping("/professors")
+    @GetMapping("/professor")
     public ApplicationResponse<ItemsResponse<ProfessorItem>> list(
         @RequestParam(name = "limit", defaultValue = "50") @Min(1) @Max(200) int limit,
         @RequestParam(name = "offset", defaultValue = "0") @Min(0) int offset
