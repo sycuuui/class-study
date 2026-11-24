@@ -30,6 +30,9 @@ public class Course extends BaseTimeEntity {
     @Column(nullable = false)
     private int capacity;
 
+    @Version
+    private Long version;
+
     @Column(name = "schedule_day", nullable = false)
     @Enumerated(EnumType.STRING)
     private ScheduleDay scheduleDay;
