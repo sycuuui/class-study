@@ -33,7 +33,7 @@ class EnrollmentApiTest extends EnrollmentTestSupport {
         Course course = saveCourse("과목", 3, 30, ScheduleDay.MONDAY, 540, 630, d, p);
         Student student = saveStudent(18, d);
 
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/enrollment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"studentId\":%d,\"courseId\":%d}".formatted(student.getId(), course.getId())))
             .andExpect(status().isCreated())
@@ -48,7 +48,7 @@ class EnrollmentApiTest extends EnrollmentTestSupport {
         Professor p = saveProfessor(d);
         Course course = saveCourse("과목", 3, 30, ScheduleDay.MONDAY, 540, 630, d, p);
 
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/enrollment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"studentId\":999999,\"courseId\":%d}".formatted(course.getId())))
             .andExpect(status().isNotFound())
@@ -64,7 +64,7 @@ class EnrollmentApiTest extends EnrollmentTestSupport {
         Student student = saveStudent(18, d);
         enrollmentService.requestEnrollment(student.getId(), course.getId());
 
-        mockMvc.perform(delete("/enrollments")
+        mockMvc.perform(delete("/enrollment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"studentId\":%d,\"courseId\":%d}".formatted(student.getId(), course.getId())))
             .andExpect(status().isOk())
@@ -74,7 +74,7 @@ class EnrollmentApiTest extends EnrollmentTestSupport {
     @Test
     @DisplayName("파라미터 검증 위반(limit 초과) 시 400 + code 2002")
     void listStudents_validationFails() throws Exception {
-        mockMvc.perform(get("/students").param("limit", "999"))
+        mockMvc.perform(get("/student").param("limit", "999"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value(2002));
     }

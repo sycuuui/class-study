@@ -14,7 +14,7 @@ import org.hibernate.annotations.SQLDelete;
 @Entity
 @Table(name = "course")
 @Getter
-@SQLDelete(sql = "UPDATE course SET deleted_at = NOW() where id = ?")
+@SQLDelete(sql = "UPDATE course SET deleted_at = NOW() where id = ? AND version = ?")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Course extends BaseTimeEntity {
     @Id
