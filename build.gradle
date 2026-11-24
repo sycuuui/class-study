@@ -29,6 +29,10 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'
     //http://localhost:8080/swagger-ui/index.html
 
+    //Optimistic Lock Retry
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     // Testcontainers - 테스트를 MySQL(운영과 동일한 DB)로 실행

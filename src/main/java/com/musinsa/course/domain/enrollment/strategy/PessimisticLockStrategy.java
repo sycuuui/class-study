@@ -6,17 +6,19 @@ import com.musinsa.course.domain.course.service.validator.CourseValidator;
 import com.musinsa.course.global.exception.ApplicationException;
 import com.musinsa.course.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "enrollment.strategy", havingValue = "pessimistic")
 public class PessimisticLockStrategy implements CapacityReservationStrategy{
     final CourseRepository courseRepository;
     final CourseValidator courseValidator;
     @Override
     public Course reserveSeat(long courseId) {
         //강좌 존재(비관적 락 걸기)
-        Course course =  courseRepository.findCourseByIdAndDeletedAtIsNull(courseId)
+        Course course =  courseRepository.findCourseByIdAndDeletedAtIsNullWithPessimisticLock(courseId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 
         //정원 초과 확인
@@ -30,7 +32,7 @@ public class PessimisticLockStrategy implements CapacityReservationStrategy{
 
     @Override
     public Course releaseSeat(long courseId) {
-        Course course = courseRepository.findCourseByIdAndDeletedAtIsNull(courseId)
+        Course course = courseRepository.findCourseByIdAndDeletedAtIsNullWithPessimisticLock(courseId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 
         course.decreaseEnrolled();

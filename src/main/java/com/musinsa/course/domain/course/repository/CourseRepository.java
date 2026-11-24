@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
@@ -27,5 +28,10 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     /** A가 잡으면 B는 커밋될 때까지 대기. PESSIMISTIC_READ는 공유 락*/
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Course> findCourseByIdAndDeletedAtIsNull(Long id);
+    @Query("SELECT c FROM Course c WHERE c.id = :id AND c.deletedAt IS NULL")
+    Optional<Course> findCourseByIdAndDeletedAtIsNullWithPessimisticLock(Long id);
+
+    @Lock(LockModeType.OPTIMISTIC)
+    @Query("SELECT c FROM Course c WHERE c.id = :id AND c.deletedAt IS NULL")
+    Optional<Course> findCourseByIdAndDeletedAtIsNullWithOptimisticLock(Long id);
 }
