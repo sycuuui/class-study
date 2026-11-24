@@ -7,6 +7,7 @@ import com.musinsa.course.domain.department.entity.Department;
 import com.musinsa.course.domain.department.repository.DepartmentRepository;
 import com.musinsa.course.domain.enrollment.repository.EnrollmentRepository;
 import com.musinsa.course.domain.enrollment.service.EnrollmentService;
+import com.musinsa.course.domain.enrollment.service.wrapper.RetryWrapper;
 import com.musinsa.course.domain.professor.entity.Professor;
 import com.musinsa.course.domain.professor.repository.ProfessorRepository;
 import com.musinsa.course.domain.student.entity.Student;
@@ -50,6 +51,7 @@ abstract class EnrollmentTestSupport {
     }
 
     @Autowired protected EnrollmentService enrollmentService;
+    @Autowired protected RetryWrapper retryWrapper;
     @Autowired protected DepartmentRepository departmentRepository;
     @Autowired protected ProfessorRepository professorRepository;
     @Autowired protected CourseRepository courseRepository;
