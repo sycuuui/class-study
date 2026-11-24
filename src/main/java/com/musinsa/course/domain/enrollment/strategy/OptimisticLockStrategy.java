@@ -6,18 +6,18 @@ import com.musinsa.course.domain.course.service.validator.CourseValidator;
 import com.musinsa.course.global.exception.ApplicationException;
 import com.musinsa.course.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@Primary
+@ConditionalOnProperty(name = "enrollment.strategy", havingValue = "optimistic")
 public class OptimisticLockStrategy implements CapacityReservationStrategy{
     final CourseRepository courseRepository;
     final CourseValidator courseValidator;
     @Override
     public Course reserveSeat(long courseId) {
-        //강좌 존재(비관적 락 걸기)
+        //강좌 존재(낙관적 락 걸기)
         Course course =  courseRepository.findCourseByIdAndDeletedAtIsNullWithOptimisticLock(courseId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 

@@ -28,10 +28,10 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     /** A가 잡으면 B는 커밋될 때까지 대기. PESSIMISTIC_READ는 공유 락*/
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT c FROM Course c WHERE c.id = :id")
+    @Query("SELECT c FROM Course c WHERE c.id = :id AND c.deletedAt IS NULL")
     Optional<Course> findCourseByIdAndDeletedAtIsNullWithPessimisticLock(Long id);
 
     @Lock(LockModeType.OPTIMISTIC)
-    @Query("SELECT c FROM Course c WHERE c.id = :id")
+    @Query("SELECT c FROM Course c WHERE c.id = :id AND c.deletedAt IS NULL")
     Optional<Course> findCourseByIdAndDeletedAtIsNullWithOptimisticLock(Long id);
 }

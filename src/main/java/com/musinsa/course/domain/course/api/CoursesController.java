@@ -20,7 +20,7 @@ public class CoursesController {
 
     private final CourseService courseService;
 
-    @GetMapping("/courses")
+    @GetMapping("/course")
     public ApplicationResponse<ItemsResponse<CourseItem>> list(
         @RequestParam(name = "departmentId", required = false) Long departmentId,
         @RequestParam(name = "limit", defaultValue = "50") @Min(1) @Max(200) int limit,

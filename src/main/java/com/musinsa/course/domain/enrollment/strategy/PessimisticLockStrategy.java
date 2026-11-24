@@ -6,10 +6,12 @@ import com.musinsa.course.domain.course.service.validator.CourseValidator;
 import com.musinsa.course.global.exception.ApplicationException;
 import com.musinsa.course.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "enrollment.strategy", havingValue = "pessimistic")
 public class PessimisticLockStrategy implements CapacityReservationStrategy{
     final CourseRepository courseRepository;
     final CourseValidator courseValidator;
