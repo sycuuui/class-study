@@ -14,7 +14,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.musinsa.course.domain.student.entity.Student;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +51,7 @@ class EnrollmentConcurrencyTest extends EnrollmentTestSupport {
             pool.submit(() -> {
                 try {
                     start.await();
-                    enrollmentService.requestEnrollment(studentId, courseId);
+                    retryWrapper.requestEnrollmentWithRetry(studentId,courseId);
                     success.incrementAndGet();
                 } catch (Exception e) {
                     failure.incrementAndGet();
@@ -103,7 +102,7 @@ class EnrollmentConcurrencyTest extends EnrollmentTestSupport {
             pool.submit(() -> {
                 try {
                     start.await();
-                    enrollmentService.requestEnrollment(studentId, courseId);
+                    retryWrapper.requestEnrollmentWithRetry(studentId, courseId);
                     success.incrementAndGet();
                 } catch (Exception e) {
                     failure.incrementAndGet();
