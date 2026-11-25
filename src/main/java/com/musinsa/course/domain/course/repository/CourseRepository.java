@@ -1,7 +1,6 @@
 package com.musinsa.course.domain.course.repository;
 
 import com.musinsa.course.domain.course.entity.Course;
-import com.musinsa.course.domain.student.entity.Student;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,6 +9,7 @@ import org.springframework.data.jpa.repository.*;
 import java.util.Optional;
 
 public interface CourseRepository extends JpaRepository<Course, Long> {
+    Optional<Course> findCourseById(Long id);
 
     /**
      * 전체 강좌 페이징 조회.
@@ -34,5 +34,9 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     @Modifying
     @Query("UPDATE Course c SET c.enrolled = c.enrolled+1 WHERE c.id = :id AND c.enrolled < c.capacity AND c.deletedAt IS NULL")
-    Optional<Course> updateCourseByCapacityIsLessThanEnrolled(Long id);
+    int updateCourseByCapacityIsLessThanEnrolled(Long id);
+
+    @Modifying
+    @Query("UPDATE Course c SET c.enrolled = c.enrolled-1 WHERE c.id = :id AND c.deletedAt IS NULL")
+    void decreaseCourseEnrolled(Long id);
 }
