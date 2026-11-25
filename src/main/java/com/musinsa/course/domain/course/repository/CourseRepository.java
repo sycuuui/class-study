@@ -5,10 +5,7 @@ import com.musinsa.course.domain.student.entity.Student;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.*;
 
 import java.util.Optional;
 
@@ -29,9 +26,13 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     /** A가 잡으면 B는 커밋될 때까지 대기. PESSIMISTIC_READ는 공유 락*/
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Course c WHERE c.id = :id AND c.deletedAt IS NULL")
-    Optional<Course> findCourseByIdAndDeletedAtIsNullWithPessimisticLock(Long id);
+    Optional<Course> findCourseWithPessimisticLock(Long id);
 
     @Lock(LockModeType.OPTIMISTIC)
     @Query("SELECT c FROM Course c WHERE c.id = :id AND c.deletedAt IS NULL")
-    Optional<Course> findCourseByIdAndDeletedAtIsNullWithOptimisticLock(Long id);
+    Optional<Course> findCourseWithOptimisticLock(Long id);
+
+    @Modifying
+    @Query("UPDATE Course c SET c.enrolled = c.enrolled+1 WHERE c.id = :id AND c.enrolled < c.capacity AND c.deletedAt IS NULL")
+    Optional<Course> updateCourseByCapacityIsLessThanEnrolled(Long id);
 }

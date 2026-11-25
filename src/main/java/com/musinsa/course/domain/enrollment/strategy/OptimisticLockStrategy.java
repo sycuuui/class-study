@@ -18,7 +18,7 @@ public class OptimisticLockStrategy implements CapacityReservationStrategy{
     @Override
     public Course reserveSeat(long courseId) {
         //강좌 존재(낙관적 락 걸기)
-        Course course =  courseRepository.findCourseByIdAndDeletedAtIsNullWithOptimisticLock(courseId)
+        Course course =  courseRepository.findCourseWithOptimisticLock(courseId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 
         //정원 초과 확인
@@ -32,7 +32,7 @@ public class OptimisticLockStrategy implements CapacityReservationStrategy{
 
     @Override
     public Course releaseSeat(long courseId) {
-        Course course = courseRepository.findCourseByIdAndDeletedAtIsNullWithOptimisticLock(courseId)
+        Course course = courseRepository.findCourseWithOptimisticLock(courseId)
                 .orElseThrow(() -> new ApplicationException(ErrorCode.COURSE_NOT_FOUND));
 
         course.decreaseEnrolled();
